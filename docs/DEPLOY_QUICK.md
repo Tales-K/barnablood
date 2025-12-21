@@ -72,6 +72,13 @@ Railway will automatically deploy and your app should be live!
 - Verify all 4 environment variables are set correctly
 - Ensure no trailing spaces in variable values
 
+### Node.js Version Error
+If you see "You are using Node.js 18.x" error:
+1. Make sure `.nvmrc` and `.node-version` files are committed
+2. In Railway dashboard, go to **Settings** > **Environment**
+3. Look for Node version setting (Railway should auto-detect from `.nvmrc`)
+4. Or manually set in Variables: `NODE_VERSION=20.18.0`
+
 ### "Invalid Redirect URI" Error
 - Double-check the redirect URI in Google Console matches exactly:
   `https://barnablood-production.up.railway.app/api/auth/callback/google`
