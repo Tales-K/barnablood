@@ -5,19 +5,35 @@ import type { Monster } from '@/types/monster';
 let storage: Storage | null = null;
 let bucket: ReturnType<Storage['bucket']> | null = null;
 
-if (process.env.GOOGLE_APPLICATION_CREDENTIALS && process.env.GCS_BUCKET_NAME) {
+// Try to initialize GCS with either file path (local) or JSON credentials (Railway)
+if (process.env.GCS_BUCKET_NAME) {
     try {
-        storage = new Storage({
-            keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-        });
+        // Option 1: Use JSON credentials from environment variable (Railway)
+        if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+            const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+            storage = new Storage({
+                credentials: credentials,
+                projectId: credentials.project_id,
+            });
+            console.log('GCS initialized with JSON credentials');
+        }
+        // Option 2: Use file path (Local development)
+        else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+            storage = new Storage({
+                keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+            });
+            console.log('GCS initialized with credentials file');
+        }
 
-        bucket = storage.bucket(process.env.GCS_BUCKET_NAME);
-        console.log('GCS initialized successfully');
+        if (storage) {
+            bucket = storage.bucket(process.env.GCS_BUCKET_NAME);
+            console.log(`GCS bucket configured: ${process.env.GCS_BUCKET_NAME}`);
+        }
     } catch (error) {
         console.error('Failed to initialize GCS client:', error);
     }
 } else {
-    console.warn('GCS not configured: Missing GOOGLE_APPLICATION_CREDENTIALS or GCS_BUCKET_NAME');
+    console.warn('GCS not configured: Missing GCS_BUCKET_NAME');
 }
 
 function ensureGCS() {
