@@ -1,6 +1,7 @@
 .statBlockWrapper {
   display: inline-block;
   margin: 0;
+  position: relative;
 }
 
 .bar {
@@ -128,6 +129,7 @@
   display: inline;
   font-weight: bold;
   font-style: italic;
+  color: #000;
 }
 
 .featureText {
@@ -160,6 +162,7 @@
   display: inline;
   font-weight: bold;
   font-style: italic;
+  color: #000;
 }
 
 .actionContent {

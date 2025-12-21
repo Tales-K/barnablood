@@ -1,6 +1,6 @@
-# Deploying Barnablood to Railway
+# Deploying BarnaBlood to Railway
 
-This guide will walk you through deploying the Barnablood D&D 5e Monster Manager to Railway.
+This guide will walk you through deploying the BarnaBlood D&D 5e Monster Manager to Railway.
 
 ## Prerequisites
 

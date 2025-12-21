@@ -32,9 +32,9 @@ interface CollapsibleCardProps {
   };
 }
 
-function CollapsibleCard({ title, children, badge, expanded, onToggle, actionButton }: CollapsibleCardProps) {
+function CollapsibleCard({ id, title, children, badge, expanded, onToggle, actionButton }: CollapsibleCardProps) {
   return (
-    <Card>
+    <Card id={id}>
       <CardHeader
         className="cursor-pointer hover:bg-secondary/50 transition-colors"
         onClick={onToggle}
@@ -51,7 +51,8 @@ function CollapsibleCard({ title, children, badge, expanded, onToggle, actionBut
           <div className="flex items-center gap-2">
             {actionButton && (
               <Button
-                variant="ghost"
+                type="button"
+                variant="outline"
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();

@@ -7,12 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { MoreVertical } from 'lucide-react';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import MonsterStatBlock from '@/components/MonsterStatBlock';
 
@@ -20,7 +21,9 @@ export default function MonstersPage() {
   const router = useRouter();
   const [monsters, setMonsters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [columnToggles, setColumnToggles] = useState<Record<string, boolean>>({});
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [monsterToDelete, setMonsterToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   useEffect(() => {
     async function loadMonsters() {
@@ -50,6 +53,31 @@ export default function MonstersPage() {
     
     loadMonsters();
   }, [router]);
+
+  const handleDeleteMonster = async () => {
+    if (!monsterToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/monsters?id=${monsterToDelete.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete monster');
+      }
+
+      toast.success(`${monsterToDelete.name} deleted successfully`);
+      setMonsters(prev => prev.filter(m => m.id !== monsterToDelete.id));
+      setDeleteDialogOpen(false);
+      setMonsterToDelete(null);
+    } catch (error) {
+      console.error('Error deleting monster:', error);
+      toast.error('Failed to delete monster');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
   
   if (loading) {
     return (
@@ -90,43 +118,62 @@ export default function MonstersPage() {
             </div>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {monsters.map(({ id, monster }: any) => (
-              <Card key={id} className="hover:shadow-lg transition-shadow bg-card border-border relative">
-                <div className="absolute top-4 right-4 z-10">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => {
-                        setColumnToggles(prev => ({ ...prev, [id]: !prev[id] }));
-                      }}>
-                        {columnToggles[id] ? 'Single Column' : 'Double Column'}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => router.push(`/monsters/${id}`)}>
-                        View Details
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => router.push(`/monsters/${id}/edit`)}>
-                        Edit Monster
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              {monsters.map(({ id, monster }: any) => (
+                <div key={id} className="relative">
+                  <MonsterStatBlock 
+                    monster={monster}
+                    dropdownOptions={[
+                      {
+                        label: 'Edit Monster',
+                        onClick: () => router.push(`/monsters/${id}/edit`)
+                      },
+                      {
+                        label: 'Delete Monster',
+                        onClick: () => {
+                          setMonsterToDelete({ id, name: monster.Name || 'Unnamed Monster' });
+                          setDeleteDialogOpen(true);
+                        },
+                        variant: 'destructive' as const
+                      }
+                    ]}
+                  />
                 </div>
-                <CardContent className="pt-6">
-                  <div className="flex justify-center">
-                    <MonsterStatBlock 
-                      monster={monster} 
-                      showColumnToggle={false}
-                      twoColumn={columnToggles[id]}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+              ))}
+            </div>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete Monster</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to delete <strong>{monsterToDelete?.name}</strong>? This action cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setDeleteDialogOpen(false);
+                      setMonsterToDelete(null);
+                    }}
+                    disabled={isDeleting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleDeleteMonster}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? 'Deleting...' : 'Delete'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </>
         )}
       </main>
     </div>

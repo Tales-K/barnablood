@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { saveCombatSession, getCombatSession } from '@/lib/gcs';
+import { z } from 'zod';
+
+// Combat monster validation schema
+const combatMonsterSchema = z.object({
+    id: z.string().max(200),
+    monster: z.any(), // Already validated when created
+    currentHP: z.number().int().min(-10000).max(100000),
+    maxHP: z.number().int().min(1).max(100000),
+    conditions: z.array(z.string().max(100)).max(50),
+    notes: z.string().max(5000).optional(),
+});
+
+const combatSessionSchema = z.object({
+    sessionId: z.string().max(200),
+    monsters: z.array(combatMonsterSchema).max(100), // Max 100 monsters in combat
+    version: z.number().int().min(0),
+});
 
 // POST /api/combat/save - Save combat session to GCS
 export async function POST(request: NextRequest) {
@@ -12,14 +29,10 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { sessionId, monsters, version } = body;
 
-        if (!sessionId || !monsters || version === undefined) {
-            return NextResponse.json(
-                { error: 'Invalid session data' },
-                { status: 400 }
-            );
-        }
+        // Validate combat session data
+        const validatedData = combatSessionSchema.parse(body);
+        const { sessionId, monsters, version } = validatedData;
 
         const combatSession = { sessionId, monsters, version };
 
@@ -61,7 +74,17 @@ export async function POST(request: NextRequest) {
             version: newVersion,
         });
     } catch (error) {
-        console.error('Error saving combat session:', error);
+        // Validation errors (4xx) - show details to user
+        if (error instanceof z.ZodError) {
+            console.warn('[POST /api/combat/save] Validation error:', error.issues);
+            return NextResponse.json(
+                { error: 'Invalid combat session data', details: error.issues },
+                { status: 400 }
+            );
+        }
+
+        // Internal errors (5xx) - log on server, hide from user
+        console.error('[POST /api/combat/save] Error saving combat session:', error);
         return NextResponse.json(
             { error: 'Failed to save combat session' },
             { status: 500 }

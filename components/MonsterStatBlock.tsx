@@ -4,24 +4,33 @@ import type { Monster } from '@/types/monster';
 import styles from './MonsterStatBlock.module.css';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { MoreVertical } from 'lucide-react';
+
+interface DropdownOption {
+  label: string;
+  onClick: () => void;
+  variant?: 'default' | 'destructive';
+}
 
 interface MonsterStatBlockProps {
   monster: Monster;
   className?: string;
-  showColumnToggle?: boolean;
   onFieldClick?: (fieldId: string) => void;
-  twoColumn?: boolean;
+  dropdownOptions?: DropdownOption[];
 }
 
 export default function MonsterStatBlock({ 
   monster, 
   className = '', 
-  showColumnToggle = false,
   onFieldClick,
-  twoColumn: propTwoColumn = false
+  dropdownOptions
 }: MonsterStatBlockProps) {
-  const [internalTwoColumn, setInternalTwoColumn] = useState(false);
-  const twoColumn = showColumnToggle ? internalTwoColumn : propTwoColumn;
 
   const handleFieldClick = (fieldId: string) => {
     if (onFieldClick) {
@@ -31,20 +40,31 @@ export default function MonsterStatBlock({
 
   return (
     <>
-      {showColumnToggle && (
-        <div className="flex justify-end mb-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setInternalTwoColumn(!internalTwoColumn)}
-          >
-            {internalTwoColumn ? 'Single Column' : 'Two Columns'}
-          </Button>
-        </div>
-      )}
-      <div className={`${styles.statBlockWrapper} ${className}`} data-two-column={twoColumn || undefined}>
+      <div className={`${styles.statBlockWrapper} ${className}`}>
+        {dropdownOptions && dropdownOptions.length > 0 && (
+          <div className="absolute top-2 right-2 z-10">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-6 w-6 bg-[#fdf1dc]/90 hover:bg-[#fdf1dc] shadow-sm">
+                  <MoreVertical className="h-3 w-3 text-[#7a200d]" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {dropdownOptions.map((option, index) => (
+                  <DropdownMenuItem 
+                    key={index}
+                    onClick={option.onClick}
+                    className={option.variant === 'destructive' ? 'text-red-600' : ''}
+                  >
+                    {option.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
         <div className={styles.bar}></div>
-        <div className={styles.statBlock} data-two-column={twoColumn || undefined}>
+        <div className={styles.statBlock}>
           <div 
             className={styles.creatureName} 
             onClick={() => handleFieldClick('Name')}
@@ -92,11 +112,7 @@ export default function MonsterStatBlock({
             <polyline points="0,0 400,2.5 0,5" fill="#922610" stroke="#922610" />
           </svg>
 
-          <table 
-            className={styles.abilities}
-            onClick={() => handleFieldClick('Abilities')}
-            style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
-          >
+          <table className={styles.abilities}>
             <tbody>
               <tr>
                 <th>STR</th>
@@ -111,7 +127,11 @@ export default function MonsterStatBlock({
                   const modifier = Math.floor((score - 10) / 2);
                   const formattedMod = modifier >= 0 ? `+${modifier}` : `–${Math.abs(modifier)}`;
                   return (
-                    <td key={ability}>
+                    <td 
+                      key={ability}
+                      onClick={() => handleFieldClick(ability)}
+                      style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
+                    >
                       {score} ({formattedMod})
                     </td>
                   );
@@ -223,7 +243,7 @@ export default function MonsterStatBlock({
             onClick={() => handleFieldClick('Challenge')}
             style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
           >
-            <span className={styles.propertyName}>Challenge</span> {monster.Challenge} ({monster.XP || '200'} XP)
+            <span className={styles.propertyName}>Challenge</span> {monster.Challenge}
           </div>
 
           {monster.Traits.length > 0 && (

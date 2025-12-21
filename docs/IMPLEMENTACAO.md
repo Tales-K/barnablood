@@ -1,4 +1,4 @@
-# Barnablood - Resumo da Implementação
+# BarnaBlood - Resumo da Implementação
 
 ## ✅ O Que Foi Implementado
 

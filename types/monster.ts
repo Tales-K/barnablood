@@ -2,66 +2,66 @@ import { z } from 'zod';
 
 // Monster action/trait/reaction schema
 export const actionSchema = z.object({
-    Name: z.string(),
-    Content: z.string(),
-    Usage: z.string().optional(),
+    Name: z.string().min(1, 'Name is required').max(100, 'Name too long'),
+    Content: z.string().min(1, 'Content is required').max(5000, 'Content too long'),
+    Usage: z.string().max(200, 'Usage too long').optional(),
 });
 
 // Skill/Save schema
 export const skillOrSaveSchema = z.object({
-    Name: z.string(),
-    Modifier: z.number(),
+    Name: z.string().min(1, 'Name is required').max(50, 'Name too long'),
+    Modifier: z.number().int().min(-20, 'Modifier too low').max(50, 'Modifier too high'),
 });
 
-// Monster abilities schema
+// Monster abilities schema - allows powerful monsters but prevents abuse
 export const abilitiesSchema = z.object({
-    Str: z.number().min(1).max(50),
-    Dex: z.number().min(1).max(50),
-    Con: z.number().min(1).max(50),
-    Int: z.number().min(1).max(50),
-    Wis: z.number().min(1).max(50),
-    Cha: z.number().min(1).max(50),
+    Str: z.number().int().min(1, 'Strength must be at least 1').max(100, 'Strength too high'),
+    Dex: z.number().int().min(1, 'Dexterity must be at least 1').max(100, 'Dexterity too high'),
+    Con: z.number().int().min(1, 'Constitution must be at least 1').max(100, 'Constitution too high'),
+    Int: z.number().int().min(1, 'Intelligence must be at least 1').max(100, 'Intelligence too high'),
+    Wis: z.number().int().min(1, 'Wisdom must be at least 1').max(100, 'Wisdom too high'),
+    Cha: z.number().int().min(1, 'Charisma must be at least 1').max(100, 'Charisma too high'),
 });
 
-// AC and HP schemas
+// AC and HP schemas - generous limits for epic monsters
 export const acSchema = z.object({
-    Value: z.number().min(1),
-    Notes: z.string().optional(),
+    Value: z.number().int().min(1, 'AC must be at least 1').max(100, 'AC too high'),
+    Notes: z.string().max(500, 'AC notes too long').optional(),
 });
 
 export const hpSchema = z.object({
-    Value: z.number().min(1),
-    Notes: z.string().optional(),
+    Value: z.number().int().min(1, 'HP must be at least 1').max(100000, 'HP too high'),
+    Notes: z.string().max(500, 'HP notes too long').optional(),
 });
 
 // Full monster schema matching Improved Initiative format
 export const monsterSchema = z.object({
     Abilities: abilitiesSchema,
     AC: acSchema,
-    Actions: z.array(actionSchema),
-    Challenge: z.string(),
-    ConditionImmunities: z.array(z.string()),
-    DamageImmunities: z.array(z.string()),
-    DamageResistances: z.array(z.string()),
-    DamageVulnerabilities: z.array(z.string()),
-    Description: z.string().optional(),
+    Actions: z.array(actionSchema).max(50, 'Too many actions'),
+    Challenge: z.string().max(20, 'Challenge rating too long'),
+    ConditionImmunities: z.array(z.string().max(50, 'Condition name too long')).max(30, 'Too many condition immunities'),
+    DamageImmunities: z.array(z.string().max(100, 'Damage immunity too long')).max(30, 'Too many damage immunities'),
+    DamageResistances: z.array(z.string().max(100, 'Damage resistance too long')).max(30, 'Too many damage resistances'),
+    DamageVulnerabilities: z.array(z.string().max(100, 'Damage vulnerability too long')).max(30, 'Too many damage vulnerabilities'),
+    Description: z.string().max(10000, 'Description too long').optional(),
     HP: hpSchema,
-    ImageURL: z.string().optional(), // Can be URL or base64
+    ImageURL: z.string().max(10000000, 'Image too large').optional(), // ~10MB for base64 images
     InitiativeAdvantage: z.boolean().optional(),
-    InitiativeModifier: z.number().optional(),
-    Languages: z.array(z.string()),
-    LegendaryActions: z.array(actionSchema),
-    Player: z.string().optional(),
-    Reactions: z.array(actionSchema),
-    Saves: z.array(skillOrSaveSchema),
-    Senses: z.array(z.string()),
-    Skills: z.array(skillOrSaveSchema),
-    Source: z.string(),
-    Speed: z.array(z.string()),
-    Traits: z.array(actionSchema),
-    Type: z.string(),
-    Version: z.string().optional(),
-    Name: z.string().optional(), // Added for monster name
+    InitiativeModifier: z.number().int().min(-20, 'Initiative modifier too low').max(50, 'Initiative modifier too high').optional(),
+    Languages: z.array(z.string().max(100, 'Language name too long')).max(50, 'Too many languages'),
+    LegendaryActions: z.array(actionSchema).max(20, 'Too many legendary actions'),
+    Player: z.string().max(200, 'Player name too long').optional(),
+    Reactions: z.array(actionSchema).max(20, 'Too many reactions'),
+    Saves: z.array(skillOrSaveSchema).max(10, 'Too many saving throws'),
+    Senses: z.array(z.string().max(200, 'Sense description too long')).max(30, 'Too many senses'),
+    Skills: z.array(skillOrSaveSchema).max(30, 'Too many skills'),
+    Source: z.string().max(200, 'Source too long'),
+    Speed: z.array(z.string().max(100, 'Speed description too long')).max(20, 'Too many speed types'),
+    Traits: z.array(actionSchema).max(50, 'Too many traits'),
+    Type: z.string().max(100, 'Type too long'),
+    Version: z.string().max(20, 'Version too long').optional(),
+    Name: z.string().min(1, 'Name is required').max(200, 'Name too long'),
 });
 
 // TypeScript types inferred from schemas

@@ -1,4 +1,4 @@
-# 🚀 Setup Checklist for Barnablood
+# 🚀 Setup Checklist for BarnaBlood
 
 ## ✅ What's Already Done
 
@@ -42,7 +42,7 @@
 2. Click "Create Credentials" → "OAuth 2.0 Client ID"
 3. If prompted, configure OAuth consent screen:
    - Choose "External" user type
-   - Fill in app name: "Barnablood"
+   - Fill in app name: "BarnaBlood"
    - Add your email as support email
    - Save and continue (you can skip optional fields)
 4. Back to credentials, choose "Web application"

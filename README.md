@@ -1,4 +1,4 @@
-# Barnablood - D&D 5e Monster Manager
+# BarnaBlood - D&D 5e Monster Manager
 
 A modern web application for managing D&D 5e monsters and tracking combat sessions.
 

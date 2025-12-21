@@ -1,4 +1,4 @@
-# Barnablood - D&D 5e Monster Management
+# BarnaBlood - D&D 5e Monster Management
 A web application for managing D&D 5e monsters and tracking combat encounters with cloud synchronization.
 
 # Tech Stack

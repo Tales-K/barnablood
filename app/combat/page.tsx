@@ -14,16 +14,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MoreVertical } from 'lucide-react';
 import MonsterStatBlock from '@/components/MonsterStatBlock';
 import type { Monster } from '@/types/monster';
 
@@ -46,11 +39,8 @@ export default function CombatPage() {
   const [availableMonsters, setAvailableMonsters] = useState<Array<{ id: string; monster: Monster }>>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
-  const [columnToggles, setColumnToggles] = useState<Record<string, boolean>>({});
   const [monsterSearchQuery, setMonsterSearchQuery] = useState('');
-  const [isConditionDialogOpen, setIsConditionDialogOpen] = useState(false);
-  const [conditionMonsterInstanceId, setConditionMonsterInstanceId] = useState<string | null>(null);
-  const [newCondition, setNewCondition] = useState('');
+  const [newConditions, setNewConditions] = useState<Record<string, string>>({});
   const [hpChanges, setHpChanges] = useState<Record<string, { add: string; subtract: string }>>({});
   
   // Load available monsters
@@ -158,18 +148,22 @@ export default function CombatPage() {
   };
   
   const handleAddCondition = (instanceId: string) => {
-    setConditionMonsterInstanceId(instanceId);
-    setNewCondition('');
-    setIsConditionDialogOpen(true);
+    const conditionName = newConditions[instanceId]?.trim();
+    if (!conditionName) return;
+    
+    addCondition(instanceId, conditionName);
+    setNewConditions(prev => ({
+      ...prev,
+      [instanceId]: ''
+    }));
+    toast.success(`Condition "${conditionName}" added`);
   };
   
-  const handleConditionSubmit = () => {
-    if (conditionMonsterInstanceId && newCondition.trim()) {
-      addCondition(conditionMonsterInstanceId, newCondition.trim());
-      setIsConditionDialogOpen(false);
-      setNewCondition('');
-      setConditionMonsterInstanceId(null);
-    }
+  const updateConditionInput = (instanceId: string, value: string) => {
+    setNewConditions(prev => ({
+      ...prev,
+      [instanceId]: value
+    }));
   };
   
   const handleResetCombat = () => {
@@ -294,66 +288,122 @@ export default function CombatPage() {
                                 width: `${Math.max(0, Math.min(100, (combatMonster.currentHP / combatMonster.maxHP) * 100))}%`,
                                 backgroundColor: 
                                   combatMonster.currentHP <= 0 ? '#EF4444' :
-                                  combatMonster.currentHP < combatMonster.maxHP * 0.25 ? '#F59E0B' :
+                                  combatMonster.currentHP < combatMonster.maxHP * 0.2 ? '#EF4444' :
                                   combatMonster.currentHP < combatMonster.maxHP * 0.5 ? '#FBBF24' :
                                   '#10B981'
                               }}
                             />
                           </div>
-                          <div className="flex gap-2">
-                            <Input
-                              type="number"
-                              placeholder="Add HP"
-                              className="flex-1 h-8 text-center bg-green-950/20 border-green-800/50 text-green-400 placeholder:text-green-600"
-                              value={hpChanges[combatMonster.id]?.add || ''}
-                              onChange={(e) => updateHpChangeInput(combatMonster.id, 'add', e.target.value)}
-                              onKeyPress={(e) => {
-                                if (e.key === 'Enter') {
-                                  handleQuickHPChange(combatMonster.id, 'add');
-                                }
-                              }}
-                            />
-                            <Input
-                              type="number"
-                              placeholder="Sub HP"
-                              className="flex-1 h-8 text-center bg-red-950/20 border-red-800/50 text-red-400 placeholder:text-red-600"
-                              value={hpChanges[combatMonster.id]?.subtract || ''}
-                              onChange={(e) => updateHpChangeInput(combatMonster.id, 'subtract', e.target.value)}
-                              onKeyPress={(e) => {
-                                if (e.key === 'Enter') {
-                                  handleQuickHPChange(combatMonster.id, 'subtract');
-                                }
-                              }}
-                            />
+                          <div className="space-y-2">
+                            <div className="flex gap-2">
+                              <Input
+                                type="number"
+                                placeholder="Add HP"
+                                className="flex-1 h-8 text-center bg-green-950/20 border-green-800/50 text-green-400 placeholder:text-green-600"
+                                value={hpChanges[combatMonster.id]?.add || ''}
+                                onChange={(e) => updateHpChangeInput(combatMonster.id, 'add', e.target.value)}
+                                onKeyPress={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleQuickHPChange(combatMonster.id, 'add');
+                                  }
+                                }}
+                              />
+                              <Input
+                                type="number"
+                                placeholder="Sub HP"
+                                className="flex-1 h-8 text-center bg-red-950/20 border-red-800/50 text-red-400 placeholder:text-red-600"
+                                value={hpChanges[combatMonster.id]?.subtract || ''}
+                                onChange={(e) => updateHpChangeInput(combatMonster.id, 'subtract', e.target.value)}
+                                onKeyPress={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleQuickHPChange(combatMonster.id, 'subtract');
+                                  }
+                                }}
+                              />
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 h-7 text-xs bg-green-950/20 border-green-800/50 text-green-400 hover:bg-green-950/30"
+                                onClick={() => handleHPChange(combatMonster.id, Math.floor(combatMonster.maxHP * 0.05))}
+                              >
+                                +5%
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 h-7 text-xs bg-green-950/20 border-green-800/50 text-green-400 hover:bg-green-950/30"
+                                onClick={() => handleHPChange(combatMonster.id, Math.floor(combatMonster.maxHP * 0.15))}
+                              >
+                                +15%
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 h-7 text-xs bg-green-950/20 border-green-800/50 text-green-400 hover:bg-green-950/30"
+                                onClick={() => handleHPChange(combatMonster.id, Math.floor(combatMonster.maxHP * 0.25))}
+                              >
+                                +25%
+                              </Button>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 h-7 text-xs bg-red-950/20 border-red-800/50 text-red-400 hover:bg-red-950/30"
+                                onClick={() => handleHPChange(combatMonster.id, -Math.floor(combatMonster.maxHP * 0.05))}
+                              >
+                                -5%
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 h-7 text-xs bg-red-950/20 border-red-800/50 text-red-400 hover:bg-red-950/30"
+                                onClick={() => handleHPChange(combatMonster.id, -Math.floor(combatMonster.maxHP * 0.15))}
+                              >
+                                -15%
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 h-7 text-xs bg-red-950/20 border-red-800/50 text-red-400 hover:bg-red-950/30"
+                                onClick={() => handleHPChange(combatMonster.id, -Math.floor(combatMonster.maxHP * 0.25))}
+                              >
+                                -25%
+                              </Button>
+                            </div>
                           </div>
                         </div>
 
                         {/* Conditions */}
-                        {combatMonster.conditions.length > 0 && (
-                          <div className="flex flex-wrap gap-2">
-                            {combatMonster.conditions.map((condition, idx) => (
-                              <Badge
-                                key={idx}
-                                variant="destructive"
-                                className="cursor-pointer"
-                                onClick={() => removeCondition(combatMonster.id, condition)}
-                              >
-                                {condition} ×
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Actions */}
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleAddCondition(combatMonster.id)}
-                            className="flex-1"
-                          >
-                            + Condition
-                          </Button>
+                        <div>
+                          <Input
+                            type="text"
+                            placeholder="+ Condition"
+                            className="h-8 text-sm text-center"
+                            value={newConditions[combatMonster.id] || ''}
+                            onChange={(e) => updateConditionInput(combatMonster.id, e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                handleAddCondition(combatMonster.id);
+                              }
+                            }}
+                          />
+                          {combatMonster.conditions.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {combatMonster.conditions.map((condition, idx) => (
+                                <Badge
+                                  key={idx}
+                                  variant="destructive"
+                                  className="cursor-pointer"
+                                  onClick={() => removeCondition(combatMonster.id, condition)}
+                                >
+                                  {condition} ×
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
                         </div>
 
                         {/* Notes */}
@@ -377,36 +427,20 @@ export default function CombatPage() {
               {combatMonsters.map((combatMonster) => {
                 const monsterId = combatMonster.id.split('-')[0]; // Extract original monster ID
                 return (
-                  <div key={combatMonster.id} className="relative">
-                    <div className="absolute top-2 right-2 z-10">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 bg-[#fdf1dc]/90 hover:bg-[#fdf1dc] shadow-sm">
-                            <MoreVertical className="h-3 w-3 text-[#7a200d]" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => {
-                            setColumnToggles(prev => ({ ...prev, [combatMonster.id]: !prev[combatMonster.id] }));
-                          }}>
-                            {columnToggles[combatMonster.id] ? 'Single Column' : 'Double Column'}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => router.push(`/monsters/${monsterId}/edit`)}>
-                            Edit Monster
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => handleRemoveMonster(combatMonster.id)}
-                            className="text-red-600"
-                          >
-                            Remove from Combat
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+                  <div key={combatMonster.id}>
                     <MonsterStatBlock 
-                      monster={combatMonster.monster} 
-                      showColumnToggle={false}
-                      twoColumn={columnToggles[combatMonster.id]}
+                      monster={combatMonster.monster}
+                      dropdownOptions={[
+                        {
+                          label: 'Edit Monster',
+                          onClick: () => router.push(`/monsters/${monsterId}/edit`)
+                        },
+                        {
+                          label: 'Remove from Combat',
+                          onClick: () => handleRemoveMonster(combatMonster.id),
+                          variant: 'destructive' as const
+                        }
+                      ]}
                     />
                   </div>
                 );
@@ -430,35 +464,6 @@ export default function CombatPage() {
             <Button variant="destructive" onClick={handleResetCombat}>
               Reset Combat
             </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Add Condition Dialog */}
-      <Dialog open={isConditionDialogOpen} onOpenChange={setIsConditionDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Condition</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Condition Name</label>
-              <Input
-                value={newCondition}
-                onChange={(e) => setNewCondition(e.target.value)}
-                placeholder="e.g., Poisoned, Frightened, Prone"
-                onKeyDown={(e) => e.key === 'Enter' && handleConditionSubmit()}
-                autoFocus
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsConditionDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleConditionSubmit} disabled={!newCondition.trim()}>
-                Add Condition
-              </Button>
-            </div>
           </div>
         </DialogContent>
       </Dialog>
