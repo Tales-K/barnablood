@@ -1,0 +1,173 @@
+.statBlockWrapper {
+  display: inline-block;
+  margin: 0;
+}
+
+.bar {
+  height: 5px;
+  background: #E69A28;
+  border: 1px solid #000;
+  position: relative;
+  z-index: 1;
+}
+
+.statBlock {
+  width: 400px;
+  background-color: #fdf1dc;
+  padding: 0.6em;
+  padding-bottom: 0.5em;
+  border: 1px solid #DDD;
+  box-shadow: 0 0 1.5em #867453;
+  position: relative;
+  z-index: 0;
+  margin-left: 2px;
+  margin-right: 2px;
+  font-family: 'Noto Sans', 'Myriad Pro', Calibri, Helvetica, Arial, sans-serif;
+  font-size: 13.5px;
+}
+
+.statBlock[data-two-column] {
+  width: 840px;
+  columns: 400px;
+  column-gap: 40px;
+  column-fill: auto;
+}
+
+/* Keep everything before first section header in first column */
+.statBlock[data-two-column] > *:nth-child(-n+20):not(.sectionHeader) {
+  column-span: all;
+}
+
+/* First section header starts second column */
+.statBlock[data-two-column] .sectionHeader:first-of-type {
+  break-before: column;
+}
+
+.statBlock[data-two-column] .sectionHeader {
+  break-after: avoid-column;
+}
+
+.statBlock[data-two-column] .propertyBlock,
+.statBlock[data-two-column] .action {
+  break-inside: avoid-column;
+}
+
+.statBlock[data-two-column] > .sectionHeader:first-of-type {
+  break-before: column;
+}
+
+.creatureName {
+  font-family: 'Libre Baskerville', 'Lora', 'Calisto MT', 'Bookman Old Style', Bookman, 'Goudy Old Style', Garamond, 'Hoefler Text', 'Bitstream Charter', Georgia, serif;
+  color: #7a200d;
+  font-weight: 700;
+  margin: 0;
+  font-size: 23px;
+  letter-spacing: 1px;
+  font-variant: small-caps;
+}
+
+.creatureType {
+  font-weight: normal;
+  font-style: italic;
+  font-size: 12px;
+  margin: 0;
+  color: #000;
+}
+
+.taperedRule {
+  width: 100%;
+  height: 5px;
+  margin-top: 0.6em;
+  margin-bottom: 0.35em;
+}
+
+.propertyLine {
+  line-height: 1.4;
+  display: block;
+  text-indent: -1em;
+  padding-left: 1em;
+  color: #7a200d;
+}
+
+.propertyName {
+  font-weight: bold;
+  margin: 0;
+  display: inline;
+}
+
+.abilities {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+}
+
+.abilities th,
+.abilities td {
+  width: 50px;
+  text-align: center;
+  color: #7a200d;
+}
+
+.features {
+  line-height: 1.4;
+  display: block;
+  text-indent: -1em;
+  padding-left: 1em;
+  color: #7a200d;
+}
+
+.propertyBlock {
+  margin-top: 0.3em;
+  margin-bottom: 0.9em;
+  line-height: 1.5;
+  display: block;
+}
+
+.featureName {
+  margin: 0;
+  display: inline;
+  font-weight: bold;
+  font-style: italic;
+}
+
+.featureText {
+  display: inline;
+  text-indent: 0;
+  color: #000;
+}
+
+.sectionHeader {
+  font-family: 'Libre Baskerville', 'Lora', 'Calisto MT', 'Bookman Old Style', Bookman, 'Goudy Old Style', Garamond, 'Hoefler Text', 'Bitstream Charter', Georgia, serif;
+  border-bottom: 1px solid #7a200d;
+  color: #7a200d;
+  font-size: 21px;
+  font-variant: small-caps;
+  font-weight: normal;
+  letter-spacing: 1px;
+  margin: 0;
+  margin-bottom: 0.3em;
+}
+
+.action {
+  margin-top: 0.3em;
+  margin-bottom: 0.9em;
+  line-height: 1.5;
+  display: block;
+}
+
+.actionName {
+  margin: 0;
+  display: inline;
+  font-weight: bold;
+  font-style: italic;
+}
+
+.actionContent {
+  display: inline;
+  text-indent: 0;
+  color: #000;
+}
+
+.italic {
+  font-style: italic;
+}

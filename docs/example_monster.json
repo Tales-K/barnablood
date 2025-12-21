@@ -1,0 +1,130 @@
+{
+    "Abilities": {
+        "Cha": 10,
+        "Con": 12,
+        "Dex": 16,
+        "Int": 14,
+        "Str": 22,
+        "Wis": 18
+    },
+    "AC": {
+        "Notes": "asd",
+        "Value": 30
+    },
+    "Actions": [
+        {
+            "Content": "<i>Melee Weapon Attack:</i> +10 vs AC. <i>Hit:</i> 56 (22d4 + 1) slashing damage.",
+            "Name": "Slash",
+            "Usage": ""
+        },
+        {
+            "Content": "<i>Melee Weapon Attack:</i> DC 17 vs Strength. <i>Hit:</i> the target is pushed up to 10 ft away.",
+            "Name": "Knockback",
+            "Usage": ""
+        },
+        {
+            "Content": "asd",
+            "Name": "asd",
+            "Usage": ""
+        }
+    ],
+    "Challenge": "8",
+    "ConditionImmunities": [
+        "charmed"
+    ],
+    "DamageImmunities": [
+        "force"
+    ],
+    "DamageResistances": [
+        "lightning"
+    ],
+    "DamageVulnerabilities": [
+        "lightning"
+    ],
+    "Description": "",
+    "HP": {
+        "Notes": "",
+        "Value": 253
+    },
+    "ImageURL": "asddasasd",
+    "InitiativeAdvantage": false,
+    "InitiativeModifier": 0,
+    "Languages": [
+        "common"
+    ],
+    "LegendaryActions": [],
+    "Player": "",
+    "Reactions": [
+        {
+            "Content": "dasd",
+            "Name": "asdasd",
+            "Usage": ""
+        }
+    ],
+    "Saves": [
+        {
+            "Modifier": 11,
+            "Name": "int"
+        },
+        {
+            "Modifier": 7,
+            "Name": "dex"
+        },
+        {
+            "Modifier": 7,
+            "Name": "str"
+        },
+        {
+            "Modifier": 3,
+            "Name": "con"
+        },
+        {
+            "Modifier": 3,
+            "Name": "wis"
+        },
+        {
+            "Modifier": 3,
+            "Name": "cha"
+        }
+    ],
+    "Senses": [
+        "blindsight asd",
+        "darkvision ads",
+        "tremorsense asd",
+        "truesight asd",
+        "other asd"
+    ],
+    "Skills": [
+        {
+            "Modifier": 14,
+            "Name": "athletics"
+        },
+        {
+            "Modifier": 6,
+            "Name": "arcana"
+        }
+    ],
+    "Source": "Giffyglyph's Monster Maker",
+    "Speed": [
+        "normal 30 ft.",
+        "burrow asd",
+        "climb asd",
+        "fly asd",
+        "swim asd",
+        "other asd"
+    ],
+    "Traits": [
+        {
+            "Content": "Once per turn, add your level in extra damage to an attack.",
+            "Name": "(Striker) Savage Assault",
+            "Usage": ""
+        },
+        {
+            "Content": "You can <i>Disengage</i> as a bonus action.",
+            "Name": "Shifty",
+            "Usage": ""
+        }
+    ],
+    "Type": "construct",
+    "Version": "2.5.1"
+}
