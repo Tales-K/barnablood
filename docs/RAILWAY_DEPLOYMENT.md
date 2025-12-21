@@ -107,14 +107,25 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
 In your Railway project dashboard, go to **Variables** tab and add the following:
 
+#### Application Port (Important!)
+
+Railway needs to know which port your app listens on. Next.js by default uses port 3000.
+
+**Option 1: Set in Railway UI**
+- In Railway dashboard, go to **Settings** > **Networking**
+- Set **Port** to `3000`
+
+**Option 2: Use PORT Environment Variable**
+- Railway automatically provides a `PORT` environment variable
+- Next.js will use it automatically in production mode
+- No additional configuration needed if using `npm start`
+
 #### Authentication Configuration
 
 ```env
-NEXTAUTH_URL=https://your-app-name.up.railway.app
+NEXTAUTH_URL=https://barnablood-production.up.railway.app
 NEXTAUTH_SECRET=<your-generated-secret-from-step-3>
 ```
-
-**Note:** Update `NEXTAUTH_URL` with your actual Railway domain after deployment.
 
 #### Google OAuth Credentials
 
