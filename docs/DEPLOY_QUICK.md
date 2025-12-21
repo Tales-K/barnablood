@@ -91,6 +91,10 @@ Railway will ask for the port. Use: **3000** (Next.js default)
 
 Railway's `PORT` environment variable is automatically used by Next.js in production.
 
+## Node.js Version
+
+Next.js 16 requires Node.js >= 20.9.0. The `package.json` specifies this in the `engines` field, so Railway will automatically use the correct version.
+
 ## Updating Your App
 
 Push to your connected GitHub branch:
