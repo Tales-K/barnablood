@@ -5,14 +5,13 @@ import { UseFormRegister, UseFormSetValue, UseFormWatch, FieldErrors } from 'rea
 import { Monster } from '@/types/monster';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Trash2 } from 'lucide-react';
 import { FieldWithError } from '@/components/form/FieldWithError';
-import { TagInput } from '@/components/ui/TagInput';
+import { CommaArrayInput } from '@/components/ui/CommaArrayInput';
 import { CollapsibleCard } from '@/components/form/CollapsibleCard';
-import { handleDynamicField, handleCommaSeparatedChange } from '@/lib/formHelpers';
+import { handleDynamicField } from '@/lib/formHelpers';
 
 interface DynamicMonsterFormProps {
   register: UseFormRegister<Monster>;
@@ -44,24 +43,31 @@ export function DynamicMonsterForm({
 
   // Expand section if any field inside has an error
   useEffect(() => {
-    const errorSectionMap: Record<string, boolean> = {
-      basic: !!(errors.Name || errors.Type || errors.Challenge || errors.ImageURL),
-      stats: !!(errors.AC?.Value || errors.HP?.Value),
-      abilities: false,
-      details: !!(errors.Speed || errors.Senses || errors.Languages || errors.DamageVulnerabilities || errors.DamageResistances || errors.DamageImmunities || errors.ConditionImmunities),
-      saves: Array.isArray(errors.Saves) && errors.Saves.some(e => e),
-      skills: Array.isArray(errors.Skills) && errors.Skills.some(e => e),
-      traits: Array.isArray(errors.Traits) && errors.Traits.some(e => e),
-      actions: Array.isArray(errors.Actions) && errors.Actions.some(e => e),
-      reactions: Array.isArray(errors.Reactions) && errors.Reactions.some(e => e),
-      legendary: Array.isArray(errors.LegendaryActions) && errors.LegendaryActions.some(e => e),
-    };
-    for (const section in errorSectionMap) {
-      if (errorSectionMap[section] && !expandedSections[section]) {
-        setExpandedSections(prev => ({ ...prev, [section]: true }));
+    // Only expand sections if errors appear in a section that is currently collapsed
+    setExpandedSections(prev => {
+      const errorSectionMap: Record<string, boolean> = {
+        basic: !!(errors.Name || errors.Type || errors.Challenge || errors.ImageURL),
+        stats: !!(errors.AC?.Value || errors.HP?.Value),
+        abilities: false,
+        details: !!(errors.Speed || errors.Senses || errors.Languages || errors.DamageVulnerabilities || errors.DamageResistances || errors.DamageImmunities || errors.ConditionImmunities),
+        saves: Array.isArray(errors.Saves) && errors.Saves.some(e => e),
+        skills: Array.isArray(errors.Skills) && errors.Skills.some(e => e),
+        traits: Array.isArray(errors.Traits) && errors.Traits.some(e => e),
+        actions: Array.isArray(errors.Actions) && errors.Actions.some(e => e),
+        reactions: Array.isArray(errors.Reactions) && errors.Reactions.some(e => e),
+        legendary: Array.isArray(errors.LegendaryActions) && errors.LegendaryActions.some(e => e),
+      };
+      let changed = false;
+      const next = { ...prev };
+      for (const section in errorSectionMap) {
+        if (errorSectionMap[section] && !prev[section]) {
+          next[section] = true;
+          changed = true;
+        }
       }
-    }
-  }, [errors]);
+      return changed ? next : prev;
+    });
+  }, [errors, setExpandedSections]);
 
   const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
 
@@ -110,10 +116,11 @@ export function DynamicMonsterForm({
 
 
   // Helper for add/remove
-  const handleAdd = (type: any) => {
+  type DynamicFieldType = "Actions" | "LegendaryActions" | "Reactions" | "Saves" | "Skills" | "Traits";
+  const handleAdd = (type: DynamicFieldType) => {
     handleDynamicField({ type, action: 'add', setValue, watch });
     // Map type to section key
-    const sectionMap: Record<string, string> = {
+    const sectionMap: Record<DynamicFieldType, string> = {
       'Saves': 'saves',
       'Skills': 'skills',
       'Traits': 'traits',
@@ -124,7 +131,7 @@ export function DynamicMonsterForm({
     const sectionKey = sectionMap[type] || type.toLowerCase();
     setExpandedSections((prev) => ({ ...prev, [sectionKey]: true }));
   };
-  const handleRemove = (type: any, index: number) => {
+  const handleRemove = (type: DynamicFieldType, index: number) => {
     handleDynamicField({ type, action: 'remove', setValue, watch, index });
   };
 
@@ -147,9 +154,9 @@ export function DynamicMonsterForm({
           </div>
 
           <div ref={registerField('SearchTags')}>
-            <label className="block text-sm font-medium mb-1">Tags</label>
-            <TagInput
-              tags={watch('SearchTags') || []}
+            <CommaArrayInput
+              label="Tags"
+              values={Array.isArray(watch('SearchTags')) ? watch('SearchTags')! : []}
               onChange={tags => setValue('SearchTags', tags)}
               placeholder="+ Tag"
             />
@@ -309,100 +316,72 @@ export function DynamicMonsterForm({
       >
         <div className="space-y-4">
 
-          <div ref={registerField('Speed')}>
-            <FieldWithError
-              label="Speed (comma-separated)"
-              inputProps={{
-                id: 'Speed',
-                placeholder: 'e.g., 30 ft., fly 60 ft.',
-                value: (watch('Speed') || []).join(', '),
-                onChange: (e: any) => handleCommaSeparatedChange(e, setValue, 'Speed'),
-                ...register('Speed'),
-              }}
+          <div id="Speed" ref={registerField('Speed')}>
+            <CommaArrayInput
+              label="Speed"
+              values={Array.isArray(watch('Speed')) ? watch('Speed') : []}
+              onChange={vals => setValue('Speed', vals)}
+              placeholder="e.g., 30 ft., fly 60 ft."
             />
           </div>
 
 
-          <div ref={registerField('Senses')}>
-            <FieldWithError
-              label="Senses (comma-separated)"
-              inputProps={{
-                id: 'Senses',
-                placeholder: 'e.g., darkvision 60 ft., passive Perception 12',
-                value: (watch('Senses') || []).join(', '),
-                onChange: (e: any) => handleCommaSeparatedChange(e, setValue, 'Senses'),
-                ...register('Senses'),
-              }}
+          <div id="Senses" ref={registerField('Senses')}>
+            <CommaArrayInput
+              label="Senses"
+              values={Array.isArray(watch('Senses')) ? watch('Senses') : []}
+              onChange={vals => setValue('Senses', vals)}
+              placeholder="e.g., darkvision 60 ft., passive Perception 12"
             />
           </div>
 
 
-          <div ref={registerField('Languages')}>
-            <FieldWithError
-              label="Languages (comma-separated)"
-              inputProps={{
-                id: 'Languages',
-                placeholder: 'e.g., Common, Draconic',
-                value: (watch('Languages') || []).join(', '),
-                onChange: (e: any) => handleCommaSeparatedChange(e, setValue, 'Languages'),
-                ...register('Languages'),
-              }}
+          <div id="Languages" ref={registerField('Languages')}>
+            <CommaArrayInput
+              label="Languages"
+              values={Array.isArray(watch('Languages')) ? watch('Languages') : []}
+              onChange={vals => setValue('Languages', vals)}
+              placeholder="e.g., Common, Draconic"
             />
           </div>
 
 
-          <div ref={registerField('DamageVulnerabilities')}>
-            <FieldWithError
-              label="Damage Vulnerabilities (comma-separated)"
-              inputProps={{
-                id: 'DamageVulnerabilities',
-                placeholder: 'e.g., fire, cold',
-                value: (watch('DamageVulnerabilities') || []).join(', '),
-                onChange: (e: any) => handleCommaSeparatedChange(e, setValue, 'DamageVulnerabilities'),
-                ...register('DamageVulnerabilities'),
-              }}
+          <div id="DamageVulnerabilities" ref={registerField('DamageVulnerabilities')}>
+            <CommaArrayInput
+              label="Damage Vulnerabilities"
+              values={Array.isArray(watch('DamageVulnerabilities')) ? watch('DamageVulnerabilities') : []}
+              onChange={vals => setValue('DamageVulnerabilities', vals)}
+              placeholder="e.g., fire, cold"
             />
           </div>
 
 
-          <div ref={registerField('DamageResistances')}>
-            <FieldWithError
-              label="Damage Resistances (comma-separated)"
-              inputProps={{
-                id: 'DamageResistances',
-                placeholder: 'e.g., bludgeoning, piercing',
-                value: (watch('DamageResistances') || []).join(', '),
-                onChange: (e: any) => handleCommaSeparatedChange(e, setValue, 'DamageResistances'),
-                ...register('DamageResistances'),
-              }}
+          <div id="DamageResistances" ref={registerField('DamageResistances')}>
+            <CommaArrayInput
+              label="Damage Resistances"
+              values={Array.isArray(watch('DamageResistances')) ? watch('DamageResistances') : []}
+              onChange={vals => setValue('DamageResistances', vals)}
+              placeholder="e.g., bludgeoning, piercing"
             />
           </div>
 
 
-          <div ref={registerField('DamageImmunities')}>
-            <FieldWithError
-              label="Damage Immunities (comma-separated)"
-              inputProps={{
-                id: 'DamageImmunities',
-                placeholder: 'e.g., poison, psychic',
-                value: (watch('DamageImmunities') || []).join(', '),
-                onChange: (e: any) => handleCommaSeparatedChange(e, setValue, 'DamageImmunities'),
-                ...register('DamageImmunities'),
-              }}
+          <div id="DamageImmunities" ref={registerField('DamageImmunities')}>
+            <CommaArrayInput
+              label="Damage Immunities"
+              values={Array.isArray(watch('DamageImmunities')) ? watch('DamageImmunities') : []}
+              onChange={vals => setValue('DamageImmunities', vals)}
+              placeholder="e.g., poison, psychic"
             />
           </div>
 
 
-          <div ref={registerField('ConditionImmunities')}>
-            <FieldWithError
-              label="Condition Immunities (comma-separated)"
-              inputProps={{
-                id: 'ConditionImmunities',
-                placeholder: 'e.g., charmed, frightened',
-                value: (watch('ConditionImmunities') || []).join(', '),
-                onChange: (e: any) => handleCommaSeparatedChange(e, setValue, 'ConditionImmunities'),
-                ...register('ConditionImmunities'),
-              }}
+          <div id="ConditionImmunities" ref={registerField('ConditionImmunities')}>
+            <CommaArrayInput
+              label="Condition Immunities"
+              values={Array.isArray(watch('ConditionImmunities')) ? watch('ConditionImmunities') : []}
+              onChange={vals => setValue('ConditionImmunities', vals)}
+              placeholder="e.g., charmed, frightened"
             />
           </div>
         </div>

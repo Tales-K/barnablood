@@ -271,10 +271,26 @@ export default function EditMonsterPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit, (errors) => {
-              console.error('Form validation errors:', errors);
-              toast.error('Please fix validation errors before submitting');
-            })} className="space-y-6">
+            <form
+              onSubmit={handleSubmit(onSubmit, (errors) => {
+                console.error('Form validation errors:', errors);
+                toast.error('Please fix validation errors before submitting');
+              })}
+              onKeyDown={e => {
+                // Prevent Enter from submitting unless in textarea or button
+                if (e.key === 'Enter') {
+                  const target = e.target as HTMLElement;
+                  if (
+                    target.tagName !== 'TEXTAREA' &&
+                    target.tagName !== 'BUTTON' &&
+                    !(target as HTMLInputElement).type?.toLowerCase().includes('submit')
+                  ) {
+                    e.preventDefault();
+                  }
+                }
+              }}
+              className="space-y-6"
+            >
               <DynamicMonsterForm
                 register={register}
                 setValue={setValue}

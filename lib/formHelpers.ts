@@ -28,9 +28,19 @@ export function handleDynamicField({ type, action, setValue, watch, index }: {
             default:
                 empty = {};
         }
-        setValue(type, [...arr, empty]);
+        // Ensure correct type for setValue
+        if (type === 'Actions' || type === 'LegendaryActions' || type === 'Reactions') {
+            setValue(type, [...(arr as { Name: string; Content: string; Usage?: string }[]), empty as { Name: string; Content: string; Usage?: string }]);
+        } else if (type === 'Saves' || type === 'Skills' || type === 'Traits') {
+            setValue(type, [...(arr as { Name: string; Modifier: number }[]), empty as { Name: string; Modifier: number }]);
+        }
     } else if (action === 'remove' && typeof index === 'number') {
-        setValue(type, arr.filter((_: any, i: number) => i !== index));
+        // Ensure correct type for setValue
+        if (type === 'Actions' || type === 'LegendaryActions' || type === 'Reactions') {
+            setValue(type, (arr as { Name: string; Content: string; Usage?: string }[]).filter((_, i) => i !== index));
+        } else if (type === 'Saves' || type === 'Skills' || type === 'Traits') {
+            setValue(type, (arr as { Name: string; Modifier: number }[]).filter((_, i) => i !== index));
+        }
     }
 }
 

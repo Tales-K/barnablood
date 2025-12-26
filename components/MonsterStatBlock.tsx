@@ -2,7 +2,7 @@
 
 import type { Monster } from '@/types/monster';
 import styles from './MonsterStatBlock.module.css';
-import { useState } from 'react';
+// import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { MoreVertical } from 'lucide-react';
+import { CommaFieldDisplay } from './CommaFieldDisplay';
 
 interface DropdownOption {
   label: string;
@@ -105,7 +106,7 @@ export default function MonsterStatBlock({
             onClick={() => handleFieldClick('Speed')}
             style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
           >
-            <span className={styles.propertyName}>Speed</span> {monster.Speed.length > 0 ? monster.Speed.join(', ') : '—'}
+            <span className={styles.propertyName}>Speed</span> <CommaFieldDisplay value={monster.Speed} />
           </div>
 
           <svg className={styles.taperedRule} height="5" width="400">
@@ -183,7 +184,7 @@ export default function MonsterStatBlock({
               style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
             >
               <span className={styles.propertyName}>Damage Vulnerabilities</span>{' '}
-              {monster.DamageVulnerabilities.join(', ')}
+              <CommaFieldDisplay value={monster.DamageVulnerabilities} />
             </div>
           )}
 
@@ -194,7 +195,7 @@ export default function MonsterStatBlock({
               style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
             >
               <span className={styles.propertyName}>Damage Resistances</span>{' '}
-              {monster.DamageResistances.join(', ')}
+              <CommaFieldDisplay value={monster.DamageResistances} />
             </div>
           )}
 
@@ -205,7 +206,7 @@ export default function MonsterStatBlock({
               style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
             >
               <span className={styles.propertyName}>Damage Immunities</span>{' '}
-              {monster.DamageImmunities.join(', ')}
+              <CommaFieldDisplay value={monster.DamageImmunities} />
             </div>
           )}
 
@@ -216,7 +217,7 @@ export default function MonsterStatBlock({
               style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
             >
               <span className={styles.propertyName}>Condition Immunities</span>{' '}
-              {monster.ConditionImmunities.join(', ')}
+              <CommaFieldDisplay value={monster.ConditionImmunities} />
             </div>
           )}
 
@@ -226,7 +227,7 @@ export default function MonsterStatBlock({
             style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
           >
             <span className={styles.propertyName}>Senses</span>{' '}
-            {monster.Senses.length > 0 ? monster.Senses.join(', ') : '—'}
+            <CommaFieldDisplay value={monster.Senses} />
           </div>
 
           <div 
@@ -235,7 +236,7 @@ export default function MonsterStatBlock({
             style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
           >
             <span className={styles.propertyName}>Languages</span>{' '}
-            {monster.Languages.length > 0 ? monster.Languages.join(', ') : '—'}
+            <CommaFieldDisplay value={monster.Languages} />
           </div>
 
           <div 

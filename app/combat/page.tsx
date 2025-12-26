@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import Link from 'next/link';
+// import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import MonsterStatBlock from '@/components/MonsterStatBlock';
 import { MonsterSearch } from '@/components/MonsterSearch';
@@ -41,7 +41,7 @@ export default function CombatPage() {
   const [availableMonsters, setAvailableMonsters] = useState<Array<{ id: string; monster: Monster }>>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
-  const [newConditions, setNewConditions] = useState<Record<string, string>>({});
+  // Removed unused newConditions state
   const [hpChanges, setHpChanges] = useState<Record<string, { add: string; subtract: string }>>({});
   
   // Load available monsters
@@ -89,7 +89,7 @@ export default function CombatPage() {
     }, 2000);
     
     return () => clearInterval(interval);
-  }, [sessionId, combatMonsters, version]);
+  }, [sessionId, combatMonsters, version, setVersion]);
   
   const handleAddMonster = (monsterId: string) => {
     const found = availableMonsters.find(m => m.id === monsterId);
@@ -147,24 +147,23 @@ export default function CombatPage() {
     }));
   };
   
-  const handleAddCondition = (instanceId: string) => {
-    const conditionName = newConditions[instanceId]?.trim();
-    if (!conditionName) return;
-    
-    addCondition(instanceId, conditionName);
-    setNewConditions(prev => ({
-      ...prev,
-      [instanceId]: ''
-    }));
-    toast.success(`Condition "${conditionName}" added`);
-  };
+  // const handleAddCondition = (instanceId: string) => {
+  //   const conditionName = newConditions[instanceId]?.trim();
+  //   if (!conditionName) return;
+  //   addCondition(instanceId, conditionName);
+  //   setNewConditions(prev => ({
+  //     ...prev,
+  //     [instanceId]: ''
+  //   }));
+  //   toast.success(`Condition "${conditionName}" added`);
+  // };
   
-  const updateConditionInput = (instanceId: string, value: string) => {
-    setNewConditions(prev => ({
-      ...prev,
-      [instanceId]: value
-    }));
-  };
+  // const updateConditionInput = (instanceId: string, value: string) => {
+  //   setNewConditions(prev => ({
+  //     ...prev,
+  //     [instanceId]: value
+  //   }));
+  // };
   
   const handleResetCombat = () => {
     reset();

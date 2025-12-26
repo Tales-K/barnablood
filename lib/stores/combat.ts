@@ -51,7 +51,7 @@ export const useCombatStore = create<CombatState>()(
             updateMonsterHP: (id, newHP) =>
                 set((state) => ({
                     monsters: state.monsters.map((m) =>
-                        m.id === id ? { ...m, currentHP: Math.max(0, newHP) } : m
+                        m.id === id ? { ...m, currentHP: newHP } : m
                     ),
                     lastUpdated: Date.now(),
                     pendingChanges: true,
