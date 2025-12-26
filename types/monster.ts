@@ -62,6 +62,7 @@ export const monsterSchema = z.object({
     Type: z.string().max(100, 'Type too long'),
     Version: z.string().max(20, 'Version too long').optional(),
     Name: z.string().min(1, 'Name is required').max(200, 'Name too long'),
+    SearchTags: z.array(z.string().max(50, 'Tag too long')).max(20, 'Too many search tags').optional(),
 });
 
 // TypeScript types inferred from schemas

@@ -1,13 +1,14 @@
 import { signIn } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import Image from 'next/image';
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
+    <div className="flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800" style={{ minHeight: 'calc(100vh - var(--app-header-height))' }}>
       <div className="w-full max-w-md space-y-8 rounded-lg bg-gray-800 p-10 shadow-xl">
         <div className="text-center">
           <div className="flex justify-center mb-4">
-            <img src="/logo.png" alt="BarnaBlood Logo" width={80} height={80} className="rounded-lg" />
+            <Image src="/logo.png" alt="BarnaBlood Logo" width={80} height={80} className="rounded-lg" priority />
           </div>
           <h1 className="text-4xl font-bold text-white mb-2">BarnaBlood</h1>
           <p className="text-gray-400">D&D 5e Monster Management</p>

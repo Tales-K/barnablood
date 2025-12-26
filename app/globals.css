@@ -1,3 +1,12 @@
+/* Error highlight for invalid form fields */
+input[aria-invalid="true"],
+textarea[aria-invalid="true"],
+select[aria-invalid="true"] {
+  border-color: var(--destructive, #ef4444) !important;
+  background-color: oklch(0.98 0.05 25 / 0.08);
+  box-shadow: 0 0 0 2px var(--destructive, #ef4444)22;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -122,7 +131,7 @@
   html, body {
     @apply bg-background text-foreground;
     height: 100%;
-    overflow-x: hidden;
+    /* overflow-x: hidden; */
   }
   body {
     overflow-y: auto;

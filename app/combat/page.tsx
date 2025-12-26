@@ -10,14 +10,16 @@ import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import MonsterStatBlock from '@/components/MonsterStatBlock';
+import { MonsterSearch } from '@/components/MonsterSearch';
+import { TagInput } from '@/components/ui/TagInput';
 import type { Monster } from '@/types/monster';
 
 export default function CombatPage() {
@@ -39,7 +41,6 @@ export default function CombatPage() {
   const [availableMonsters, setAvailableMonsters] = useState<Array<{ id: string; monster: Monster }>>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
-  const [monsterSearchQuery, setMonsterSearchQuery] = useState('');
   const [newConditions, setNewConditions] = useState<Record<string, string>>({});
   const [hpChanges, setHpChanges] = useState<Record<string, { add: string; subtract: string }>>({});
   
@@ -115,8 +116,7 @@ export default function CombatPage() {
   const handleHPChange = (instanceId: string, delta: number) => {
     const monster = combatMonsters.find(m => m.id === instanceId);
     if (!monster) return;
-    
-    const newHP = Math.max(0, Math.min(monster.maxHP, monster.currentHP + delta));
+    const newHP = monster.currentHP + delta;
     updateMonsterHP(instanceId, newHP);
   };
 
@@ -173,7 +173,7 @@ export default function CombatPage() {
   };
   
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>
@@ -184,63 +184,22 @@ export default function CombatPage() {
             </div>
           </div>
           <div className="flex gap-2">
+            <Button onClick={() => setIsAddDialogOpen(true)}>Add Monster</Button>
+            
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>Add Monster</Button>
-              </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Add Monster to Combat</DialogTitle>
+                  <DialogDescription>
+                    Search and select a monster to add to the combat session
+                  </DialogDescription>
                 </DialogHeader>
-                <Input
-                  placeholder="Search monsters..."
-                  value={monsterSearchQuery}
-                  onChange={(e) => setMonsterSearchQuery(e.target.value)}
-                  className="mb-4"
+                <MonsterSearch
+                  availableMonsters={availableMonsters}
+                  onSelectMonster={handleAddMonster}
+                  emptyMessage="No monsters found."
+                  emptyActionLink={{ href: '/monsters/new', label: 'Create one first' }}
                 />
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {availableMonsters.filter(({ monster }) => 
-                    (monster.Name || '').toLowerCase().includes(monsterSearchQuery.toLowerCase()) ||
-                    monster.Type.toLowerCase().includes(monsterSearchQuery.toLowerCase())
-                  ).length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">
-                      {monsterSearchQuery ? 'No monsters found.' : 'No monsters available.'} <Link href="/monsters/new" className="text-primary hover:underline">Create one first</Link>
-                    </p>
-                  ) : (
-                    availableMonsters.filter(({ monster }) => 
-                      (monster.Name || '').toLowerCase().includes(monsterSearchQuery.toLowerCase()) ||
-                      monster.Type.toLowerCase().includes(monsterSearchQuery.toLowerCase())
-                    ).map(({ id, monster }) => (
-                      <Card
-                        key={id}
-                        className="cursor-pointer hover:bg-accent transition-colors"
-                        onClick={() => handleAddMonster(id)}
-                      >
-                        <CardContent className="p-3">
-                          <div className="flex items-center gap-4">
-                            {monster.ImageURL && (
-                              <img
-                                src={monster.ImageURL}
-                                alt={monster.Name}
-                                className="w-12 h-12 rounded object-cover"
-                              />
-                            )}
-                            <div className="flex-1">
-                              <h3 className="font-semibold text-foreground">{monster.Name}</h3>
-                              <div className="flex gap-2 mt-1">
-                                <Badge variant="secondary" className="text-xs">{monster.Type}</Badge>
-                                <Badge variant="outline" className="text-xs">CR {monster.Challenge}</Badge>
-                              </div>
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              HP: {monster.HP.Value}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </div>
               </DialogContent>
             </Dialog>
             
@@ -272,7 +231,7 @@ export default function CombatPage() {
                 <CardTitle className="text-lg text-foreground">Combat Manager</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="flex flex-wrap justify-center gap-4">
                   {combatMonsters.map((combatMonster) => (
                     <Card key={combatMonster.id} className="bg-card border-border p-3">
                       <div className="space-y-3">
@@ -377,34 +336,18 @@ export default function CombatPage() {
                         </div>
 
                         {/* Conditions */}
-                        <div>
-                          <Input
-                            type="text"
-                            placeholder="+ Condition"
-                            className="h-8 text-sm text-center"
-                            value={newConditions[combatMonster.id] || ''}
-                            onChange={(e) => updateConditionInput(combatMonster.id, e.target.value)}
-                            onKeyPress={(e) => {
-                              if (e.key === 'Enter') {
-                                handleAddCondition(combatMonster.id);
-                              }
-                            }}
-                          />
-                          {combatMonster.conditions.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mt-2">
-                              {combatMonster.conditions.map((condition, idx) => (
-                                <Badge
-                                  key={idx}
-                                  variant="destructive"
-                                  className="cursor-pointer"
-                                  onClick={() => removeCondition(combatMonster.id, condition)}
-                                >
-                                  {condition} ×
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                        <TagInput
+                          tags={combatMonster.conditions}
+                          onChange={tags => {
+                            // Remove all then add all tags (simulate full replace)
+                            // Remove all existing
+                            combatMonster.conditions.forEach(cond => removeCondition(combatMonster.id, cond));
+                            // Add new
+                            tags.forEach(cond => addCondition(combatMonster.id, cond));
+                          }}
+                          placeholder="+ Condition"
+                          className=""
+                        />
 
                         {/* Notes */}
                         <div>
@@ -425,7 +368,16 @@ export default function CombatPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {combatMonsters.map((combatMonster) => {
-                const monsterId = combatMonster.id.split('-')[0]; // Extract original monster ID
+                // Use the full monster UUID before the first '-' only if the id is a composite (id-timestamp), else use as is
+                const monsterId = (() => {
+                  // If the id is in the format uuid-timestamp, extract uuid part (before last '-')
+                  const parts = combatMonster.id.split('-');
+                  if (parts.length > 4) {
+                    // UUID v4 has 4 dashes, so join the first 5 parts
+                    return parts.slice(0, 5).join('-');
+                  }
+                  return combatMonster.id;
+                })();
                 return (
                   <div key={combatMonster.id}>
                     <MonsterStatBlock 

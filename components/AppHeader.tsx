@@ -44,14 +44,17 @@ export default function AppHeader() {
   }
 
   return (
-    <nav className="bg-card shadow-sm border-b border-border">
+    <nav className="bg-card shadow-sm border-b border-border fixed-header" style={{ zIndex: 'var(--app-header-z)', height: 'var(--app-header-height)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center gap-8">
             <Link href="/monsters" className="flex items-center gap-3">
               <img src="/logo.png" alt="BarnaBlood Logo" width={40} height={40} className="rounded" />
-              <span className="text-2xl font-bold" style={{ fontFamily: 'var(--font-cinzel)' }}>
-                <span className="text-foreground">Barna</span><span className="text-red-600">Blood</span>
+              <span className="flex flex-col items-start">
+                <span className="text-2xl font-bold" style={{ fontFamily: 'var(--font-cinzel)' }}>
+                  <span className="text-foreground">Barna</span><span className="text-red-600">Blood</span>
+                </span>
+                <span className="text-xs text-muted-foreground version-number" style={{ fontSize: '0.65rem', marginTop: '-0.2rem', marginLeft: '0.1rem' }}>V 0.1.2</span>
               </span>
             </Link>
             <div className="flex gap-4">

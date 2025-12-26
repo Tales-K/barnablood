@@ -43,6 +43,7 @@ export default function EditMonsterPage() {
       DamageImmunities: [],
       ConditionImmunities: [],
       Languages: [],
+      SearchTags: [],
       AC: { Value: 10, Notes: '' },
       HP: { Value: 10, Notes: '' },
       InitiativeModifier: 0,
@@ -224,7 +225,7 @@ export default function EditMonsterPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="bg-background flex items-center justify-center" style={{ minHeight: 'calc(100vh - var(--app-header-height))' }}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Loading monster...</p>
@@ -234,7 +235,7 @@ export default function EditMonsterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-foreground">Edit Monster</h2>
@@ -252,6 +253,21 @@ export default function EditMonsterPage() {
               <Link href="/monsters">
                 <Button variant="outline">Back to Monsters</Button>
               </Link>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(formData, null, 2));
+                  const dlAnchor = document.createElement('a');
+                  dlAnchor.setAttribute("href", dataStr);
+                  dlAnchor.setAttribute("download", `${formData.Name || 'monster'}.json`);
+                  document.body.appendChild(dlAnchor);
+                  dlAnchor.click();
+                  dlAnchor.remove();
+                }}
+              >
+                Download Monster
+              </Button>
             </div>
           </CardHeader>
           <CardContent>

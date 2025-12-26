@@ -1,0 +1,34 @@
+/* Tiny version number below BarnaBlood */
+.version-number {
+  font-size: 0.65rem;
+  color: var(--muted-foreground, #888);
+  margin-top: -0.2rem;
+  margin-left: 0.1rem;
+  letter-spacing: 0.02em;
+}
+/* App-wide z-index and header height variables */
+:root {
+  --app-header-height: 64px;
+  --app-page-z: 1;
+  --app-modal-overlay-z: 1000;
+  --app-modal-content-z: 1001;
+  --app-header-z: 2000;
+}
+
+.fixed-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--app-header-z);
+  width: 100%;
+}
+
+.page-content {
+  padding-top: var(--app-header-height);
+}
+
+/* Optional: ensure body/page backgrounds are below header */
+body, .bg-background {
+  z-index: 0;
+}

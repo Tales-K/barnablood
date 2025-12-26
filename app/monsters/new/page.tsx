@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { DynamicMonsterForm } from '@/components/DynamicMonsterForm';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MonsterSearch } from '@/components/MonsterSearch';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import MonsterStatBlock from '@/components/MonsterStatBlock';
@@ -19,7 +19,6 @@ export default function NewMonsterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availableMonsters, setAvailableMonsters] = useState<Array<{ id: string; monster: Monster }>>([]);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [selectedMonsterId, setSelectedMonsterId] = useState<string>('');
   const [importedMonster, setImportedMonster] = useState<Monster | null>(null);
   
   const {
@@ -46,6 +45,7 @@ export default function NewMonsterPage() {
       DamageImmunities: [],
       ConditionImmunities: [],
       Languages: [],
+      SearchTags: [],
       AC: { Value: 10, Notes: '' },
       HP: { Value: 10, Notes: '' },
       InitiativeModifier: 0,
@@ -78,8 +78,8 @@ export default function NewMonsterPage() {
       .catch(err => console.error('Failed to load monsters:', err));
   }, []);
 
-  const handleImportMonster = () => {
-    const found = availableMonsters.find(m => m.id === selectedMonsterId);
+  const handleImportMonster = (monsterId: string) => {
+    const found = availableMonsters.find(m => m.id === monsterId);
     if (!found) return;
 
     // Set imported monster data
@@ -220,7 +220,7 @@ export default function NewMonsterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-foreground">Create New Monster</h2>
@@ -239,45 +239,56 @@ export default function NewMonsterPage() {
         <Card className="bg-card border-border">
           <CardHeader>
             <div className="flex gap-2">
-            <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline">Import Monster</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Import Monster Data</DialogTitle>
-                  <DialogDescription>
-                    Select a monster to import its data. You can then modify it and save as a new monster.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <Select value={selectedMonsterId} onValueChange={setSelectedMonsterId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a monster" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableMonsters.map(({ id, monster }) => (
-                        <SelectItem key={id} value={id}>
-                          {monster.Name} - CR {monster.Challenge}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" onClick={() => setIsImportDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleImportMonster} disabled={!selectedMonsterId}>
-                      Import
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-            <Link href="/monsters">
-              <Button variant="outline">Back to Monsters</Button>
-            </Link>
-          </div>
+              <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline">Import Monster</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Import Monster Data</DialogTitle>
+                    <DialogDescription>
+                      Select a monster to import its data. You can then modify it and save as a new monster.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <MonsterSearch
+                    availableMonsters={availableMonsters}
+                    onSelectMonster={handleImportMonster}
+                    emptyMessage="No monsters available."
+                    emptyActionLink={{ href: '/monsters', label: 'Go to monsters list' }}
+                  />
+                </DialogContent>
+              </Dialog>
+              <label htmlFor="monster-upload-json" className="sr-only">Upload Monster</label>
+              <input
+                id="monster-upload-json"
+                type="file"
+                accept="application/json"
+                style={{ display: 'none' }}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const text = await file.text();
+                    const json = JSON.parse(text);
+                    reset(json);
+                    toast.success('Monster loaded from file!');
+                  } catch (err) {
+                    toast.error('Invalid monster JSON file');
+                  }
+                  e.target.value = '';
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => document.getElementById('monster-upload-json')?.click()}
+              >
+                Upload Monster
+              </Button>
+              <Link href="/monsters">
+                <Button variant="outline">Back to Monsters</Button>
+              </Link>
+            </div>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit, (errors) => {

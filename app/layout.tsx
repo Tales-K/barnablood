@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Cinzel } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import AppHeader from "@/components/AppHeader";
 import "./globals.css";
+import "./app-header.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,7 +42,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${cinzel.variable} antialiased`}
       >
         <AppHeader />
-        {children}
+        <div className="page-content">
+          {children}
+        </div>
         <Toaster position="top-right" richColors />
       </body>
     </html>
