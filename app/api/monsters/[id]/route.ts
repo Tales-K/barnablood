@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getMonster, saveMonster, deleteMonster } from '@/lib/gcs';
+import { getMonsterFromFirestore, saveMonsterToFirestore, deleteMonsterFromFirestore } from '@/lib/firestore';
 import { monsterSchema } from '@/types/monster';
 import { z } from 'zod';
 
@@ -17,7 +17,7 @@ export async function GET(
         }
 
         const { id: monsterId } = await params;
-        const monster = await getMonster(session.user.email, monsterId);
+        const monster = await getMonsterFromFirestore(session.user.email, monsterId);
 
         if (!monster) {
             return NextResponse.json({ error: 'Monster not found' }, { status: 404 });
@@ -52,13 +52,13 @@ export async function PUT(
         const validatedMonster = monsterSchema.parse(body);
 
         // Check if monster exists
-        const existingMonster = await getMonster(session.user.email, monsterId);
+        const existingMonster = await getMonsterFromFirestore(session.user.email, monsterId);
         if (!existingMonster) {
             return NextResponse.json({ error: 'Monster not found' }, { status: 404 });
         }
 
         // Save updated monster
-        await saveMonster(session.user.email, monsterId, validatedMonster);
+        await saveMonsterToFirestore(session.user.email, monsterId, validatedMonster);
 
         return NextResponse.json({ id: monsterId, monster: validatedMonster });
     } catch (error) {
@@ -93,12 +93,12 @@ export async function DELETE(
         const { id: monsterId } = await params;
 
         // Check if monster exists
-        const existingMonster = await getMonster(session.user.email, monsterId);
+        const existingMonster = await getMonsterFromFirestore(session.user.email, monsterId);
         if (!existingMonster) {
             return NextResponse.json({ error: 'Monster not found' }, { status: 404 });
         }
 
-        await deleteMonster(session.user.email, monsterId);
+        await deleteMonsterFromFirestore(session.user.email, monsterId);
 
         return NextResponse.json({ success: true });
     } catch (error) {

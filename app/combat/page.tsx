@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useCombatStore } from '@/lib/stores/combat';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,18 +25,18 @@ import type { Monster } from '@/types/monster';
 export default function CombatPage() {
   const router = useRouter();
   const {
-    sessionId,
     monsters: combatMonsters,
-    version,
     addMonster,
     removeMonster,
     updateMonsterHP,
     addCondition,
     removeCondition,
     updateNotes,
+    setMonsters,
     reset,
-    setVersion,
   } = useCombatStore();
+
+  const [isSessionLoaded, setIsSessionLoaded] = useState(false);
   
   const [availableMonsters, setAvailableMonsters] = useState<Array<{ id: string; monster: Monster }>>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -51,45 +51,51 @@ export default function CombatPage() {
       .then(data => setAvailableMonsters(data.monsters || []))
       .catch(err => console.error('Failed to load monsters:', err));
   }, []);
-  
-  // Auto-sync every 2 seconds
+
+  // Load combat session from server on mount
   useEffect(() => {
-    if (combatMonsters.length === 0) return;
-    
-    const interval = setInterval(async () => {
+    const loadSession = async () => {
       try {
-        const response = await fetch('/api/combat/save', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId,
-            monsters: combatMonsters,
-            version,
-          }),
-        });
-        
+        const response = await fetch('/api/combat/save');
         if (response.ok) {
           const data = await response.json();
-          // Update version from server response
-          if (data.version !== undefined) {
-            setVersion(data.version);
-          }
-        } else {
-          const error = await response.json();
-          if (response.status === 409) {
-            console.error('Conflict detected:', error);
-            toast.error('Combat session conflict - please reload the page');
-          } else {
-            console.error('Save failed:', error);
+          if (data.session?.monsters?.length) {
+            setMonsters(data.session.monsters);
           }
         }
       } catch (error) {
-        console.error('Auto-sync failed:', error);
+        console.error('Failed to load combat session:', error);
+      } finally {
+        setIsSessionLoaded(true);
       }
-    }, 2000);
-    
-    return () => clearInterval(interval);
-  }, [sessionId, combatMonsters, version, setVersion]);
+    };
+    loadSession();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Save to server on every change (debounced 300 ms)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!isSessionLoaded) return;
+    if (combatMonsters.length === 0) return;
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        await fetch('/api/combat/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ monsters: combatMonsters }),
+        });
+      } catch (error) {
+        console.error('Failed to save combat session:', error);
+      }
+    }, 300);
+
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [combatMonsters, isSessionLoaded]);
   
   const handleAddMonster = (monsterId: string) => {
     const found = availableMonsters.find(m => m.id === monsterId);
@@ -165,10 +171,15 @@ export default function CombatPage() {
   //   }));
   // };
   
-  const handleResetCombat = () => {
+  const handleResetCombat = async () => {
     reset();
     setIsResetDialogOpen(false);
     toast.success('Combat session reset');
+    try {
+      await fetch('/api/combat/save', { method: 'DELETE' });
+    } catch (error) {
+      console.error('Failed to delete combat session:', error);
+    }
   };
   
   return (

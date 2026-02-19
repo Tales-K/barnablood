@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { saveCombatSession, getCombatSession } from '@/lib/gcs';
+import { saveCombatSession, getCombatSession, deleteCombatSession } from '@/lib/firestoreCombat';
 import { z } from 'zod';
 
 // Combat monster validation schema
@@ -14,12 +14,10 @@ const combatMonsterSchema = z.object({
 });
 
 const combatSessionSchema = z.object({
-    sessionId: z.string().max(200),
-    monsters: z.array(combatMonsterSchema).max(100), // Max 100 monsters in combat
-    version: z.number().int().min(0),
+    monsters: z.array(combatMonsterSchema).max(100),
 });
 
-// POST /api/combat/save - Save combat session to GCS
+// POST /api/combat/save - Save the user's active combat session
 export async function POST(request: NextRequest) {
     try {
         const session = await auth();
@@ -29,52 +27,15 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
+        const { monsters } = combatSessionSchema.parse(body);
 
-        // Validate combat session data
-        const validatedData = combatSessionSchema.parse(body);
-        const { sessionId, monsters, version } = validatedData;
-
-        const combatSession = { sessionId, monsters, version };
-
-        // Check version for conflict resolution
-        const currentSession = await getCombatSession(
-            session.user.email,
-            sessionId
-        );
-
-        // Only conflict if client is more than 1 version behind (allows for sync delay)
-        if (currentSession && currentSession.version > version + 1) {
-            return NextResponse.json(
-                {
-                    conflict: true,
-                    currentVersion: currentSession,
-                    message: 'Newer version exists. Reload to sync.',
-                },
-                { status: 409 }
-            );
-        }
-
-        // Increment version and save (use max of current versions)
-        const newVersion = Math.max(currentSession?.version || 0, version) + 1;
-        const sessionToSave = {
-            sessionId,
+        await saveCombatSession(session.user.email, {
             monsters,
-            version: newVersion,
             lastModified: Date.now(),
-        };
-
-        await saveCombatSession(
-            session.user.email,
-            sessionId,
-            sessionToSave
-        );
-
-        return NextResponse.json({
-            success: true,
-            version: newVersion,
         });
+
+        return NextResponse.json({ success: true });
     } catch (error) {
-        // Validation errors (4xx) - show details to user
         if (error instanceof z.ZodError) {
             console.warn('[POST /api/combat/save] Validation error:', error.issues);
             return NextResponse.json(
@@ -83,7 +44,6 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Internal errors (5xx) - log on server, hide from user
         console.error('[POST /api/combat/save] Error saving combat session:', error);
         return NextResponse.json(
             { error: 'Failed to save combat session' },
@@ -92,8 +52,8 @@ export async function POST(request: NextRequest) {
     }
 }
 
-// GET /api/combat/save?sessionId=xxx - Load combat session from GCS
-export async function GET(request: NextRequest) {
+// GET /api/combat/save - Load the user's active combat session
+export async function GET() {
     try {
         const session = await auth();
 
@@ -101,27 +61,38 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { searchParams } = new URL(request.url);
-        const sessionId = searchParams.get('sessionId');
-
-        if (!sessionId) {
-            return NextResponse.json(
-                { error: 'Session ID is required' },
-                { status: 400 }
-            );
-        }
-
-        const combatSession = await getCombatSession(session.user.email, sessionId);
+        const combatSession = await getCombatSession(session.user.email);
 
         if (!combatSession) {
-            return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+            return NextResponse.json({ session: null });
         }
 
         return NextResponse.json({ session: combatSession });
     } catch (error) {
-        console.error('Error loading combat session:', error);
+        console.error('[GET /api/combat/save] Error loading combat session:', error);
         return NextResponse.json(
             { error: 'Failed to load combat session' },
+            { status: 500 }
+        );
+    }
+}
+
+// DELETE /api/combat/save - Delete the user's active combat session
+export async function DELETE() {
+    try {
+        const session = await auth();
+
+        if (!session?.user?.email) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        await deleteCombatSession(session.user.email);
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('[DELETE /api/combat/save] Error deleting combat session:', error);
+        return NextResponse.json(
+            { error: 'Failed to delete combat session' },
             { status: 500 }
         );
     }

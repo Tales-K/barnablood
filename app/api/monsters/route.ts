@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { listMonsters, saveMonster, deleteMonster } from '@/lib/gcs';
+import { listMonstersFromFirestore, saveMonsterToFirestore, deleteMonsterFromFirestore } from '@/lib/firestore';
 import { monsterSchema } from '@/types/monster';
 import { z } from 'zod';
 
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const monsters = await listMonsters(session.user.email);
+        const monsters = await listMonstersFromFirestore(session.user.email);
 
         return NextResponse.json({ monsters });
     } catch (error) {
@@ -42,8 +42,8 @@ export async function POST(request: NextRequest) {
         // Generate unique ID
         const monsterId = crypto.randomUUID();
 
-        // Save to GCS
-        await saveMonster(session.user.email, monsterId, validatedMonster);
+        // Save to Firestore
+        await saveMonsterToFirestore(session.user.email, monsterId, validatedMonster);
 
         return NextResponse.json({ id: monsterId, monster: validatedMonster });
     } catch (error) {
@@ -84,7 +84,7 @@ export async function DELETE(request: NextRequest) {
             );
         }
 
-        await deleteMonster(session.user.email, monsterId);
+        await deleteMonsterFromFirestore(session.user.email, monsterId);
 
         return NextResponse.json({ success: true });
     } catch (error) {

@@ -1,5 +1,9 @@
+
 import NextAuth from 'next-auth';
 import Google from 'next-auth/providers/google';
+import { migrateUserMonstersIfNeeded } from './migrateUserMonsters';
+
+
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
     trustHost: true,
@@ -16,6 +20,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         authorized: async ({ auth }) => {
             // Logged in users are authenticated, otherwise redirect to login page
             return !!auth;
+        },
+        signIn: async ({ user }) => {
+            if (user?.email) {
+                // Run migration on login
+                await migrateUserMonstersIfNeeded(user.email);
+            }
+            return true;
         },
     },
 });
