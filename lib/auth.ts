@@ -1,7 +1,10 @@
 
 import NextAuth from 'next-auth';
 import Google from 'next-auth/providers/google';
-import { migrateUserMonstersIfNeeded } from './migrateUserMonsters';
+import {
+    migrateUserMonstersIfNeeded,
+    migrateEmbeddedFeaturesToCollection,
+} from './migrateUserMonsters';
 
 
 
@@ -23,8 +26,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
         signIn: async ({ user }) => {
             if (user?.email) {
-                // Run migration on login
+                // Run GCS → Firestore migration first (idempotent).
                 await migrateUserMonstersIfNeeded(user.email);
+                // Extract embedded features into the features collection (idempotent).
+                await migrateEmbeddedFeaturesToCollection(user.email);
             }
             return true;
         },

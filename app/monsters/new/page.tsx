@@ -13,6 +13,8 @@ import { MonsterSearch } from '@/components/MonsterSearch';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import MonsterStatBlock from '@/components/MonsterStatBlock';
+import type { FeatureWithId } from '@/types/feature';
+import type { FeatureCategory, MonsterFeature } from '@/components/form/MonsterFeatureDialog';
 
 export default function NewMonsterPage() {
   const router = useRouter();
@@ -20,6 +22,8 @@ export default function NewMonsterPage() {
   const [availableMonsters, setAvailableMonsters] = useState<Array<{ id: string; monster: Monster }>>([]);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [importedMonster, setImportedMonster] = useState<Monster | null>(null);
+  const [features, setFeatures] = useState<FeatureWithId[]>([]);
+  const [availableFeatures, setAvailableFeatures] = useState<FeatureWithId[]>([]);
   
   const {
     register,
@@ -70,12 +74,16 @@ export default function NewMonsterPage() {
     }
   }, [importedMonster, reset]);
 
-  // Load available monsters for importing
+  // Load available monsters + features library for importing
   useEffect(() => {
     fetch('/api/monsters')
       .then(res => res.json())
       .then(data => setAvailableMonsters(data.monsters || []))
       .catch(err => console.error('Failed to load monsters:', err));
+    fetch('/api/features')
+      .then(res => res.json())
+      .then(data => setAvailableFeatures(data.features || []))
+      .catch(err => console.error('Failed to load features:', err));
   }, []);
 
   const handleImportMonster = (monsterId: string) => {
@@ -90,6 +98,29 @@ export default function NewMonsterPage() {
     setIsImportDialogOpen(false);
     toast.success(`Imported ${found.monster.Name} data`);
   };
+
+  // ---- Feature callbacks (features are all local/new until submit) ----
+  const handleAddFeature = (category: FeatureCategory, feature: MonsterFeature) => {
+    const newFeature: FeatureWithId = { ...feature, Category: category, id: crypto.randomUUID(), isNew: true };
+    setFeatures(prev => [...prev, newFeature]);
+  };
+
+  const handleEditFeature = (featureId: string, category: FeatureCategory, feature: MonsterFeature) => {
+    setFeatures(prev =>
+      prev.map(f => (f.id === featureId ? { ...f, ...feature, Category: category } : f))
+    );
+  };
+
+  const handleRemoveFeature = (featureId: string) => {
+    setFeatures(prev => prev.filter(f => f.id !== featureId));
+  };
+
+  const buildEmbeddedArrays = (feats: FeatureWithId[]) => ({
+    Traits: feats.filter(f => f.Category === 'Traits').map(({ Name, Content, Usage }) => Usage ? { Name, Content, Usage } : { Name, Content }),
+    Actions: feats.filter(f => f.Category === 'Actions').map(({ Name, Content, Usage }) => Usage ? { Name, Content, Usage } : { Name, Content }),
+    Reactions: feats.filter(f => f.Category === 'Reactions').map(({ Name, Content, Usage }) => Usage ? { Name, Content, Usage } : { Name, Content }),
+    LegendaryActions: feats.filter(f => f.Category === 'LegendaryActions').map(({ Name, Content, Usage }) => Usage ? { Name, Content, Usage } : { Name, Content }),
+  });
 
   const handleFieldClick = (fieldId: string) => {
     console.log('🎯 Field clicked:', fieldId);
@@ -116,10 +147,10 @@ export default function NewMonsterPage() {
       'ConditionImmunities': 'details',
       'Saves': 'Saves',
       'Skills': 'Skills',
-      'Traits': 'Traits',
-      'Actions': 'Actions',
-      'Reactions': 'Reactions',
-      'LegendaryActions': 'LegendaryActions',
+      'Traits': 'MonsterFeatures',
+      'Actions': 'MonsterFeatures',
+      'Reactions': 'MonsterFeatures',
+      'LegendaryActions': 'MonsterFeatures',
     };
 
     const parentSection = fieldToSection[fieldId];
@@ -177,38 +208,50 @@ export default function NewMonsterPage() {
   
   const onSubmit = async (data: Monster) => {
     setIsSubmitting(true);
-    
     try {
-      console.log('Submitting monster data:', data);
-      
+      // 1. Persist new features to the features collection
+      const finalFeatures: FeatureWithId[] = [];
+      for (const feat of features) {
+        if (feat.isNew) {
+          const res = await fetch('/api/features', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ Name: feat.Name, Content: feat.Content, Usage: feat.Usage, Category: feat.Category }),
+          });
+          const created = await res.json();
+          finalFeatures.push({ ...feat, id: created.id, isNew: false });
+        } else {
+          finalFeatures.push(feat);
+        }
+      }
+
+      // 2. Build FeatureIds + embedded arrays
+      const monsterData = {
+        ...data,
+        FeatureIds: finalFeatures.map(f => f.id),
+        ...buildEmbeddedArrays(finalFeatures),
+      };
+
       const response = await fetch('/api/monsters', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(monsterData),
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
-        console.error('Server error:', error);
-        
-        // Mark invalid fields from server validation
         if (error.details && Array.isArray(error.details)) {
           error.details.forEach((detail: any) => {
             const fieldPath = detail.path.join('.');
-            setError(fieldPath as any, {
-              type: 'server',
-              message: detail.message,
-            });
+            setError(fieldPath as any, { type: 'server', message: detail.message });
           });
-          
           toast.error('Please fix the validation errors highlighted in the form');
           setIsSubmitting(false);
           return;
         }
-        
         throw new Error(error.error || 'Failed to create monster');
       }
-      
+
       toast.success('Monster created successfully!');
       router.push('/monsters');
     } catch (error) {
@@ -317,6 +360,11 @@ export default function NewMonsterPage() {
                 watch={watch}
                 errors={errors}
                 onFieldFocus={handleFieldClick}
+                features={features}
+                onAddFeature={handleAddFeature}
+                onEditFeature={handleEditFeature}
+                onRemoveFeature={handleRemoveFeature}
+                availableFeatures={availableFeatures}
               />
               <div className="flex gap-4 pt-4 border-t">
                 <Button type="submit" disabled={isSubmitting} variant="outline" className="flex-1">

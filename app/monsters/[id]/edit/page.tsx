@@ -11,6 +11,15 @@ import { DynamicMonsterForm } from '@/components/DynamicMonsterForm';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import MonsterStatBlock from '@/components/MonsterStatBlock';
+import type { FeatureWithId, FeatureCategory } from '@/types/feature';
+import type { MonsterFeature } from '@/components/form/MonsterFeatureDialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 export default function EditMonsterPage() {
   const router = useRouter();
@@ -18,6 +27,17 @@ export default function EditMonsterPage() {
   const monsterId = params.id as string;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [features, setFeatures] = useState<FeatureWithId[]>([]);
+  const [availableFeatures, setAvailableFeatures] = useState<FeatureWithId[]>([]);
+
+  // Scope-conflict dialog state
+  const [scopeDialog, setScopeDialog] = useState<{
+    open: boolean;
+    featureId: string;
+    category: FeatureCategory;
+    feature: MonsterFeature;
+    monsterCount: number;
+  } | null>(null);
 
   const {
     register,
@@ -61,29 +81,34 @@ export default function EditMonsterPage() {
 
   const formData = watch();
 
-  // Load monster data
+  // Load monster data + its features
   useEffect(() => {
     async function loadMonster() {
       try {
         const response = await fetch(`/api/monsters/${monsterId}`);
 
-        if (response.status === 401) {
-          router.push('/login');
-          return;
-        }
-
-        if (response.status === 404) {
-          toast.error('Monster not found');
-          router.push('/monsters');
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch monster');
-        }
+        if (response.status === 401) { router.push('/login'); return; }
+        if (response.status === 404) { toast.error('Monster not found'); router.push('/monsters'); return; }
+        if (!response.ok) throw new Error('Failed to fetch monster');
 
         const data = await response.json();
         reset(data.monster);
+
+        // Load features from FeatureIds
+        const featureIds: string[] = data.monster.FeatureIds || [];
+        if (featureIds.length > 0) {
+          const results = await Promise.all(
+            featureIds.map((id: string) =>
+              fetch(`/api/features/${id}`)
+                .then(r => r.ok ? r.json() : null)
+            )
+          );
+          setFeatures(
+            results
+              .filter(Boolean)
+              .map((r: { feature: FeatureWithId }) => r.feature)
+          );
+        }
       } catch (error) {
         console.error('Error fetching monster:', error);
         toast.error('Failed to load monster');
@@ -93,10 +118,80 @@ export default function EditMonsterPage() {
       }
     }
 
-    if (monsterId) {
-      loadMonster();
-    }
+    if (monsterId) loadMonster();
   }, [monsterId, router, reset]);
+
+  // Load available features library
+  useEffect(() => {
+    fetch('/api/features')
+      .then(res => res.json())
+      .then(data => setAvailableFeatures(data.features || []))
+      .catch(err => console.error('Failed to load features:', err));
+  }, []);
+
+  // ---- Feature callbacks ----
+  const handleAddFeature = async (category: FeatureCategory, feature: MonsterFeature) => {
+    try {
+      const res = await fetch('/api/features', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...feature, Category: category }),
+      });
+      const created: FeatureWithId = await res.json();
+      setFeatures(prev => [...prev, created]);
+      setAvailableFeatures(prev => [...prev, created]);
+    } catch {
+      toast.error('Failed to add feature');
+    }
+  };
+
+  const handleEditFeature = async (featureId: string, category: FeatureCategory, feature: MonsterFeature) => {
+    try {
+      const infoRes = await fetch(`/api/features/${featureId}`);
+      const { monsterCount } = await infoRes.json() as { monsterCount: number; feature: FeatureWithId };
+      if (monsterCount > 1) {
+        setScopeDialog({ open: true, featureId, category, feature, monsterCount });
+      } else {
+        await applyFeatureEdit(featureId, category, feature, 'all');
+      }
+    } catch {
+      toast.error('Failed to update feature');
+    }
+  };
+
+  const applyFeatureEdit = async (
+    featureId: string,
+    category: FeatureCategory,
+    feature: MonsterFeature,
+    scope: 'all' | 'this'
+  ) => {
+    const res = await fetch(`/api/features/${featureId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ feature: { ...feature, Category: category }, scope, monsterId }),
+    });
+    const result = await res.json();
+    const updatedId = result.newFeatureId as string;
+    const updatedFeature: FeatureWithId = { ...feature, Category: category, id: updatedId };
+    setFeatures(prev =>
+      prev.map(f => (f.id === featureId ? updatedFeature : f))
+    );
+    setAvailableFeatures(prev =>
+      prev.map(f => (f.id === featureId ? updatedFeature : f))
+    );
+    toast.success('Feature updated');
+  };
+
+  const handleRemoveFeature = (featureId: string) => {
+    setFeatures(prev => prev.filter(f => f.id !== featureId));
+  };
+
+  const buildEmbeddedArrays = (feats: FeatureWithId[]) => ({
+    Traits: feats.filter(f => f.Category === 'Traits').map(({ Name, Content, Usage }) => Usage ? { Name, Content, Usage } : { Name, Content }),
+    Actions: feats.filter(f => f.Category === 'Actions').map(({ Name, Content, Usage }) => Usage ? { Name, Content, Usage } : { Name, Content }),
+    Reactions: feats.filter(f => f.Category === 'Reactions').map(({ Name, Content, Usage }) => Usage ? { Name, Content, Usage } : { Name, Content }),
+    LegendaryActions: feats.filter(f => f.Category === 'LegendaryActions').map(({ Name, Content, Usage }) => Usage ? { Name, Content, Usage } : { Name, Content }),
+  });
 
   const handleFieldClick = (fieldId: string) => {
     console.log('🎯 Field clicked:', fieldId);
@@ -123,10 +218,10 @@ export default function EditMonsterPage() {
       'ConditionImmunities': 'details',
       'Saves': 'Saves',
       'Skills': 'Skills',
-      'Traits': 'Traits',
-      'Actions': 'Actions',
-      'Reactions': 'Reactions',
-      'LegendaryActions': 'LegendaryActions',
+      'Traits': 'MonsterFeatures',
+      'Actions': 'MonsterFeatures',
+      'Reactions': 'MonsterFeatures',
+      'LegendaryActions': 'MonsterFeatures',
     };
 
     const parentSection = fieldToSection[fieldId];
@@ -186,31 +281,29 @@ export default function EditMonsterPage() {
     setIsSubmitting(true);
 
     try {
+      const monsterData = {
+        ...data,
+        FeatureIds: features.map(f => f.id),
+        ...buildEmbeddedArrays(features),
+      };
+
       const response = await fetch(`/api/monsters/${monsterId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(monsterData),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        console.error('Server error:', error);
-        
-        // Mark invalid fields from server validation
         if (error.details && Array.isArray(error.details)) {
           error.details.forEach((detail: { path: string[]; message: string }) => {
             const fieldPath = detail.path.join('.');
-            setError(fieldPath as keyof Monster, {
-              type: 'server',
-              message: detail.message,
-            });
+            setError(fieldPath as keyof Monster, { type: 'server', message: detail.message });
           });
-          
           toast.error('Please fix the validation errors highlighted in the form');
           setIsSubmitting(false);
           return;
         }
-        
         throw new Error(error.error || 'Failed to update monster');
       }
 
@@ -243,9 +336,13 @@ export default function EditMonsterPage() {
         </div>
 
         {/* Monster Preview Card */}
-        <div className="mb-8 flex justify-center">
+        <div className="mb-2 flex justify-center">
           <MonsterStatBlock monster={formData} onFieldClick={handleFieldClick} />
         </div>
+        <p className="text-center text-sm text-muted-foreground mb-8 flex items-center justify-center gap-2">
+          <span className="inline-block">💡</span>
+          <span>Tip: Click any field in the preview card to jump to its input below</span>
+        </p>
 
         <Card className="bg-card border-border">
           <CardHeader>
@@ -297,6 +394,11 @@ export default function EditMonsterPage() {
                 watch={watch}
                 errors={errors}
                 onFieldFocus={handleFieldClick}
+                features={features}
+                onAddFeature={handleAddFeature}
+                onEditFeature={handleEditFeature}
+                onRemoveFeature={handleRemoveFeature}
+                availableFeatures={availableFeatures}
               />
               <div className="flex gap-4 pt-4 border-t">
                 <Button type="submit" disabled={isSubmitting} variant="outline" className="flex-1">
@@ -312,6 +414,39 @@ export default function EditMonsterPage() {
           </CardContent>
         </Card>
       </main>
+
+      {/* Feature scope conflict dialog */}
+      {scopeDialog && (
+        <Dialog open={scopeDialog.open} onOpenChange={(open) => !open && setScopeDialog(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Update Feature</DialogTitle>
+              <DialogDescription>
+                This feature is used by <strong>{scopeDialog.monsterCount}</strong> monsters. How would you like to apply the changes?
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-3 pt-2">
+              <Button
+                onClick={async () => {
+                  setScopeDialog(null);
+                  await applyFeatureEdit(scopeDialog.featureId, scopeDialog.category, scopeDialog.feature, 'all');
+                }}
+              >
+                Update all {scopeDialog.monsterCount} monsters
+              </Button>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  setScopeDialog(null);
+                  await applyFeatureEdit(scopeDialog.featureId, scopeDialog.category, scopeDialog.feature, 'this');
+                }}
+              >
+                Only this monster
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

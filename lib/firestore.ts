@@ -32,3 +32,13 @@ export async function listMonstersFromFirestore(userId: string) {
 export async function deleteMonsterFromFirestore(userId: string, monsterId: string) {
     await db.collection('users').doc(userId).collection('monsters').doc(monsterId).delete();
 }
+
+export async function getMonstersUsingFeature(userId: string, featureId: string) {
+    const snapshot = await db
+        .collection('users')
+        .doc(userId)
+        .collection('monsters')
+        .where('FeatureIds', 'array-contains', featureId)
+        .get();
+    return snapshot.docs.map(doc => ({ id: doc.id, monster: doc.data() }));
+}

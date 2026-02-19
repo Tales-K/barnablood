@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { APP_VERSION } from '@/lib/version';
 
 export default function AppHeader() {
   const router = useRouter();
@@ -54,21 +55,33 @@ export default function AppHeader() {
                 <span className="text-2xl font-bold" style={{ fontFamily: 'var(--font-cinzel)' }}>
                   <span className="text-foreground">Barna</span><span className="text-red-600">Blood</span>
                 </span>
-                <span className="text-xs text-muted-foreground version-number" style={{ fontSize: '0.65rem', marginTop: '-0.2rem', marginLeft: '0.1rem' }}>V 0.1.2</span>
+                <span className="text-xs text-muted-foreground version-number" style={{ fontSize: '0.65rem', marginTop: '-0.2rem', marginLeft: '0.1rem' }}>V {APP_VERSION}</span>
               </span>
             </Link>
             <div className="flex gap-4">
-              <Link 
-                href="/monsters" 
-                className={pathname?.startsWith('/monsters') ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}
-              >
-                Monsters
-              </Link>
               <Link 
                 href="/combat" 
                 className={pathname === '/combat' ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}
               >
                 Combat
+              </Link>
+              <Link 
+                href="/monsters" 
+                className={pathname?.startsWith('/monsters') && !pathname?.startsWith('/monsters/features') ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}
+              >
+                Monsters
+              </Link>
+              <Link 
+                href="/monsters/features" 
+                className={pathname?.startsWith('/monsters/features') ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}
+              >
+                Monster Features
+              </Link>
+              <Link
+                href="/changelog"
+                className={pathname === '/changelog' ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}
+              >
+                Changelog
               </Link>
             </div>
           </div>

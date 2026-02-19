@@ -7,11 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { FieldWithError } from '@/components/form/FieldWithError';
 import { CommaArrayInput } from '@/components/ui/CommaArrayInput';
 import { CollapsibleCard } from '@/components/form/CollapsibleCard';
 import { handleDynamicField } from '@/lib/formHelpers';
+import { MonsterFeatureDialog, type FeatureCategory, type MonsterFeature } from '@/components/form/MonsterFeatureDialog';
+import { CATEGORY_LABELS, CATEGORY_COLORS, type FeatureWithId } from '@/types/feature';
+import { Badge } from '@/components/ui/badge';
 
 interface DynamicMonsterFormProps {
   register: UseFormRegister<Monster>;
@@ -19,6 +22,13 @@ interface DynamicMonsterFormProps {
   watch: UseFormWatch<Monster>;
   errors: FieldErrors<Monster>;
   onFieldFocus?: (fieldId: string) => void;
+  /** Features managed by the parent page (not RHF). */
+  features: FeatureWithId[];
+  onAddFeature: (category: FeatureCategory, feature: MonsterFeature) => void;
+  onEditFeature: (featureId: string, category: FeatureCategory, feature: MonsterFeature) => void;
+  onRemoveFeature: (featureId: string) => void;
+  /** Features already in the library — shown in the import tab. */
+  availableFeatures?: FeatureWithId[];
 }
 
 export function DynamicMonsterForm({
@@ -27,6 +37,11 @@ export function DynamicMonsterForm({
   watch,
   errors,
   onFieldFocus,
+  features,
+  onAddFeature,
+  onEditFeature,
+  onRemoveFeature,
+  availableFeatures = [],
 }: DynamicMonsterFormProps) {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     basic: true,
@@ -35,11 +50,10 @@ export function DynamicMonsterForm({
     details: false,
     saves: false,
     skills: false,
-    traits: false,
-    actions: false,
-    reactions: false,
-    legendary: false,
+    features: false,
   });
+  const [isFeatureDialogOpen, setIsFeatureDialogOpen] = useState(false);
+  const [editingFeature, setEditingFeature] = useState<FeatureWithId | undefined>(undefined);
 
   // Expand section if any field inside has an error
   useEffect(() => {
@@ -52,10 +66,7 @@ export function DynamicMonsterForm({
         details: !!(errors.Speed || errors.Senses || errors.Languages || errors.DamageVulnerabilities || errors.DamageResistances || errors.DamageImmunities || errors.ConditionImmunities),
         saves: Array.isArray(errors.Saves) && errors.Saves.some(e => e),
         skills: Array.isArray(errors.Skills) && errors.Skills.some(e => e),
-        traits: Array.isArray(errors.Traits) && errors.Traits.some(e => e),
-        actions: Array.isArray(errors.Actions) && errors.Actions.some(e => e),
-        reactions: Array.isArray(errors.Reactions) && errors.Reactions.some(e => e),
-        legendary: Array.isArray(errors.LegendaryActions) && errors.LegendaryActions.some(e => e),
+        features: false,
       };
       let changed = false;
       const next = { ...prev };
@@ -74,10 +85,25 @@ export function DynamicMonsterForm({
   // Watch values for dynamic sections
   const saves = watch('Saves') || [];
   const skills = watch('Skills') || [];
-  const traits = watch('Traits') || [];
-  const actions = watch('Actions') || [];
-  const reactions = watch('Reactions') || [];
-  const legendaryActions = watch('LegendaryActions') || [];
+
+  const handleOpenAddDialog = () => {
+    setEditingFeature(undefined);
+    setIsFeatureDialogOpen(true);
+    setExpandedSections(prev => ({ ...prev, features: true }));
+  };
+
+  const handleOpenEditDialog = (feature: FeatureWithId) => {
+    setEditingFeature(feature);
+    setIsFeatureDialogOpen(true);
+  };
+
+  const handleDialogSave = (category: FeatureCategory, feature: MonsterFeature, featureId?: string) => {
+    if (featureId) {
+      onEditFeature(featureId, category, feature);
+    } else {
+      onAddFeature(category, feature);
+    }
+  };
 
   const toggleSection = (section: string) => {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
@@ -96,7 +122,7 @@ export function DynamicMonsterForm({
         const element = fieldRefs.current[fieldId];
         if (element) {
           // Expand parent section if collapsed
-          const sectionMatch = fieldId.match(/^(Saves|Skills|Traits|Actions|Reactions|LegendaryActions)/);
+          const sectionMatch = fieldId.match(/^(Saves|Skills)/);
           if (sectionMatch) {
             const section = sectionMatch[1].toLowerCase();
             setExpandedSections((prev) => ({ ...prev, [section]: true }));
@@ -115,23 +141,13 @@ export function DynamicMonsterForm({
   }, [onFieldFocus]);
 
 
-  // Helper for add/remove
-  type DynamicFieldType = "Actions" | "LegendaryActions" | "Reactions" | "Saves" | "Skills" | "Traits";
-  const handleAdd = (type: DynamicFieldType) => {
+  // Helper for add/remove (Saves and Skills only)
+  type SimpleFieldType = "Saves" | "Skills";
+  const handleAdd = (type: SimpleFieldType) => {
     handleDynamicField({ type, action: 'add', setValue, watch });
-    // Map type to section key
-    const sectionMap: Record<DynamicFieldType, string> = {
-      'Saves': 'saves',
-      'Skills': 'skills',
-      'Traits': 'traits',
-      'Actions': 'actions',
-      'Reactions': 'reactions',
-      'LegendaryActions': 'legendary',
-    };
-    const sectionKey = sectionMap[type] || type.toLowerCase();
-    setExpandedSections((prev) => ({ ...prev, [sectionKey]: true }));
+    setExpandedSections(prev => ({ ...prev, [type.toLowerCase()]: true }));
   };
-  const handleRemove = (type: DynamicFieldType, index: number) => {
+  const handleRemove = (type: SimpleFieldType, index: number) => {
     handleDynamicField({ type, action: 'remove', setValue, watch, index });
   };
 
@@ -202,7 +218,7 @@ export function DynamicMonsterForm({
 
           <div ref={registerField('ImageURL')}>
             <FieldWithError
-              label="Image URL (optional)"
+              label="Image URL"
               inputProps={{
                 id: 'ImageURL',
                 ...register('ImageURL'),
@@ -479,249 +495,71 @@ export function DynamicMonsterForm({
         </div>
       </CollapsibleCard>
 
-      {/* Traits */}
-      <CollapsibleCard 
-        id="Traits"
-        title="Traits"
-        badge={traits.length}
-        expanded={expandedSections.traits}
-        onToggle={() => toggleSection('traits')}
-        actionButton={{ label: 'Add', onClick: () => handleAdd('Traits') }}
+      {/* Monster Features */}
+      <CollapsibleCard
+        id="MonsterFeatures"
+        title="Monster Features"
+        badge={features.length}
+        expanded={expandedSections.features}
+        onToggle={() => toggleSection('features')}
+        actionButton={{ label: 'Add Monster Feature', onClick: handleOpenAddDialog }}
       >
-        <div className="space-y-4">
-          {traits.map((trait, index) => (
-            <div key={index} className="border p-4 rounded-lg space-y-4">
-              <div className="flex justify-between items-start">
-                <div className="flex-1 space-y-4">
-                  <div ref={registerField(`Traits.${index}.Name`)}>
-                    <FieldWithError
-                      label="Trait Name *"
-                      inputProps={{
-                        ...register(`Traits.${index}.Name` as `Traits.${number}.Name`),
-                        placeholder: "e.g., Pack Tactics"
-                      }}
-                      error={errors.Traits?.[index]?.Name?.message as string}
-                    />
-                  </div>
-                  <div ref={registerField(`Traits.${index}.Usage`)}>
-                    <FieldWithError
-                      label="Usage"
-                      inputProps={{
-                        ...register(`Traits.${index}.Usage` as `Traits.${number}.Usage`),
-                        placeholder: "e.g., Recharge 5-6"
-                      }}
-                      error={errors.Traits?.[index]?.Usage?.message as string}
-                    />
-                  </div>
-                  <div ref={registerField(`Traits.${index}.Content`)}>
-                    <FieldWithError
-                      label="Description *"
-                      inputProps={{
-                        ...register(`Traits.${index}.Content` as `Traits.${number}.Content`),
-                        rows: 3
-                      }}
-                      as="textarea"
-                      error={errors.Traits?.[index]?.Content?.message as string}
-                    />
-                  </div>
+        <div className="space-y-3">
+          {features.map((feat) => (
+            <div key={feat.id} className="border rounded-md p-3 flex gap-3 items-start">
+              <div className="flex-1 min-w-0 space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge
+                    variant="outline"
+                    className={`text-xs shrink-0 ${CATEGORY_COLORS[feat.Category]}`}
+                  >
+                    {CATEGORY_LABELS[feat.Category]}
+                  </Badge>
+                  <span className="font-medium text-sm">{feat.Name}</span>
+                  {feat.Usage && (
+                    <span className="text-xs text-muted-foreground">({feat.Usage})</span>
+                  )}
                 </div>
+                <p className="text-sm text-muted-foreground line-clamp-2">{feat.Content}</p>
+              </div>
+              <div className="flex gap-1 shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => handleOpenEditDialog(feat)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
                 <Button
                   type="button"
                   variant="destructive"
                   size="icon"
-                  onClick={() => handleRemove('Traits', index)}
-                  className="ml-2"
+                  onClick={() => onRemoveFeature(feat.id)}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             </div>
           ))}
+          {features.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No features yet. Click &quot;Add Monster Feature&quot; to add traits, actions, reactions, or legendary actions.
+            </p>
+          )}
         </div>
       </CollapsibleCard>
 
-      {/* Actions */}
-      <CollapsibleCard 
-        id="Actions"
-        title="Actions"
-        badge={actions.length}
-        expanded={expandedSections.actions}
-        onToggle={() => toggleSection('actions')}
-        actionButton={{ label: 'Add', onClick: () => handleAdd('Actions') }}
-      >
-        <div className="space-y-4">
-          {actions.map((action, index) => (
-            <div key={index} className="border border-border p-4 rounded-lg space-y-4">
-              <div className="flex justify-between items-start">
-                <div className="flex-1 space-y-4">
-                  <div ref={registerField(`Actions.${index}.Name`)}>
-                    <FieldWithError
-                      label="Action Name *"
-                      inputProps={{
-                        ...register(`Actions.${index}.Name` as `Actions.${number}.Name`),
-                        placeholder: "e.g., Multiattack"
-                      }}
-                      error={errors.Actions?.[index]?.Name?.message as string}
-                    />
-                  </div>
-                  <div ref={registerField(`Actions.${index}.Usage`)}>
-                    <FieldWithError
-                      label="Usage"
-                      inputProps={{
-                        ...register(`Actions.${index}.Usage` as `Actions.${number}.Usage`),
-                        placeholder: "e.g., Recharge 5-6"
-                      }}
-                      error={errors.Actions?.[index]?.Usage?.message as string}
-                    />
-                  </div>
-                  <div ref={registerField(`Actions.${index}.Content`)}>
-                    <FieldWithError
-                      label="Description *"
-                      inputProps={{
-                        ...register(`Actions.${index}.Content` as `Actions.${number}.Content`),
-                        rows: 3
-                      }}
-                      as="textarea"
-                      error={errors.Actions?.[index]?.Content?.message as string}
-                    />
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  onClick={() => handleRemove('Actions', index)}
-                  className="ml-2"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </CollapsibleCard>
-
-      {/* Reactions */}
-      <CollapsibleCard 
-        id="Reactions"
-        title="Reactions"
-        badge={reactions.length}
-        expanded={expandedSections.reactions}
-        onToggle={() => toggleSection('reactions')}
-        actionButton={{ label: 'Add', onClick: () => handleAdd('Reactions') }}
-      >
-        <div className="space-y-4">
-          {reactions.map((reaction, index) => (
-            <div key={index} className="border p-4 rounded-lg space-y-4">
-              <div className="flex justify-between items-start">
-                <div className="flex-1 space-y-4">
-                  <div ref={registerField(`Reactions.${index}.Name`)}>
-                    <FieldWithError
-                      label="Reaction Name *"
-                      inputProps={{
-                        ...register(`Reactions.${index}.Name` as `Reactions.${number}.Name`),
-                        placeholder: "e.g., Parry"
-                      }}
-                      error={errors.Reactions?.[index]?.Name?.message as string}
-                    />
-                  </div>
-                  <div ref={registerField(`Reactions.${index}.Usage`)}>
-                    <FieldWithError
-                      label="Usage"
-                      inputProps={{
-                        ...register(`Reactions.${index}.Usage` as `Reactions.${number}.Usage`),
-                        placeholder: "e.g., 1/Turn"
-                      }}
-                      error={errors.Reactions?.[index]?.Usage?.message as string}
-                    />
-                  </div>
-                  <div ref={registerField(`Reactions.${index}.Content`)}>
-                    <FieldWithError
-                      label="Description *"
-                      inputProps={{
-                        ...register(`Reactions.${index}.Content` as `Reactions.${number}.Content`),
-                        rows: 3
-                      }}
-                      as="textarea"
-                      error={errors.Reactions?.[index]?.Content?.message as string}
-                    />
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  onClick={() => handleRemove('Reactions', index)}
-                  className="ml-2"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </CollapsibleCard>
-
-      {/* Legendary Actions */}
-      <CollapsibleCard 
-        id="LegendaryActions"
-        title="Legendary Actions"
-        badge={legendaryActions.length}
-        expanded={expandedSections.legendary}
-        onToggle={() => toggleSection('legendary')}
-        actionButton={{ label: 'Add', onClick: () => handleAdd('LegendaryActions') }}
-      >
-        <div className="space-y-4">
-          {legendaryActions.map((action, index) => (
-            <div key={index} className="border p-4 rounded-lg space-y-4">
-              <div className="flex justify-between items-start">
-                <div className="flex-1 space-y-4">
-                  <div ref={registerField(`LegendaryActions.${index}.Name`)}>
-                    <FieldWithError
-                      label="Action Name *"
-                      inputProps={{
-                        ...register(`LegendaryActions.${index}.Name` as `LegendaryActions.${number}.Name`),
-                        placeholder: "e.g., Wing Attack"
-                      }}
-                      error={errors.LegendaryActions?.[index]?.Name?.message as string}
-                    />
-                  </div>
-                  <div ref={registerField(`LegendaryActions.${index}.Usage`)}>
-                    <FieldWithError
-                      label="Cost"
-                      inputProps={{
-                        ...register(`LegendaryActions.${index}.Usage` as `LegendaryActions.${number}.Usage`),
-                        placeholder: "e.g., Costs 2 Actions"
-                      }}
-                      error={errors.LegendaryActions?.[index]?.Usage?.message as string}
-                    />
-                  </div>
-                  <div ref={registerField(`LegendaryActions.${index}.Content`)}>
-                    <FieldWithError
-                      label="Description *"
-                      inputProps={{
-                        ...register(`LegendaryActions.${index}.Content` as `LegendaryActions.${number}.Content`),
-                        rows: 3
-                      }}
-                      as="textarea"
-                      error={errors.LegendaryActions?.[index]?.Content?.message as string}
-                    />
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  onClick={() => handleRemove('LegendaryActions', index)}
-                  className="ml-2"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </CollapsibleCard>
+      <MonsterFeatureDialog
+        open={isFeatureDialogOpen}
+        onOpenChange={(val) => {
+          if (!val) setEditingFeature(undefined);
+          setIsFeatureDialogOpen(val);
+        }}
+        onSave={handleDialogSave}
+        availableFeatures={availableFeatures}
+        editingFeature={editingFeature}
+      />
     </div>
   );
 }
