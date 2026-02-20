@@ -29,6 +29,7 @@ export default function EditMonsterPage() {
   const [loading, setLoading] = useState(true);
   const [features, setFeatures] = useState<FeatureWithId[]>([]);
   const [availableFeatures, setAvailableFeatures] = useState<FeatureWithId[]>([]);
+  const [openEditForFeatureId, setOpenEditForFeatureId] = useState<string | undefined>(undefined);
 
   // Scope-conflict dialog state
   const [scopeDialog, setScopeDialog] = useState<{
@@ -130,8 +131,15 @@ export default function EditMonsterPage() {
   }, []);
 
   // ---- Feature callbacks ----
-  const handleAddFeature = async (category: FeatureCategory, feature: MonsterFeature) => {
+  const handleAddFeature = async (category: FeatureCategory, feature: MonsterFeature, existingFeatureId?: string) => {
     try {
+      if (existingFeatureId) {
+        // Reuse existing library feature — just add it to local state, no new doc
+        const existing = availableFeatures.find(f => f.id === existingFeatureId)
+          ?? { ...feature, Category: category, id: existingFeatureId };
+        setFeatures(prev => [...prev, existing]);
+        return;
+      }
       const res = await fetch('/api/features', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -195,8 +203,23 @@ export default function EditMonsterPage() {
 
   const handleFieldClick = (fieldId: string) => {
     console.log('🎯 Field clicked:', fieldId);
-    
-    // Map fields to their parent sections
+
+    // Handle feature clicks: format is "Category.index" (e.g. "Traits.0", "Actions.2")
+    const featureCategories = ['Traits', 'Actions', 'Reactions', 'LegendaryActions'];
+    const dotIndex = fieldId.indexOf('.');
+    if (dotIndex !== -1) {
+      const category = fieldId.slice(0, dotIndex);
+      const idx = parseInt(fieldId.slice(dotIndex + 1));
+      if (featureCategories.includes(category) && !isNaN(idx)) {
+        const categoryFeatures = features.filter(f => f.Category === category);
+        const targetFeature = categoryFeatures[idx];
+        if (targetFeature) {
+          setOpenEditForFeatureId(targetFeature.id);
+          return;
+        }
+      }
+    }
+
     const fieldToSection: Record<string, string> = {
       'Name': 'basic',
       'Type': 'basic',
@@ -399,6 +422,8 @@ export default function EditMonsterPage() {
                 onEditFeature={handleEditFeature}
                 onRemoveFeature={handleRemoveFeature}
                 availableFeatures={availableFeatures}
+                openEditForFeatureId={openEditForFeatureId}
+                onFeatureEditOpened={() => setOpenEditForFeatureId(undefined)}
               />
               <div className="flex gap-4 pt-4 border-t">
                 <Button type="submit" disabled={isSubmitting} variant="outline" className="flex-1">

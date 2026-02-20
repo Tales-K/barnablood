@@ -110,17 +110,15 @@ export function MonsterFeatureDialog({
     };
 
     const handleImport = (feature: FeatureWithId) => {
-        setCategory(feature.Category);
-        setName(feature.Name);
-        setUsage(feature.Usage ?? '');
-        setContent(feature.Content);
-        setErrors({});
-        setMode('new');
+        // Pass the existing feature id so the parent can reuse it rather than create a duplicate
+        onSave(feature.Category, { Name: feature.Name, Content: feature.Content, Usage: feature.Usage }, feature.id);
+        resetForm();
+        onOpenChange(false);
     };
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+            <DialogContent className="max-w-lg max-h-[85vh] flex flex-col" aria-describedby={undefined}>
                 <DialogHeader>
                     <DialogTitle>
                         {isEditing ? 'Edit Monster Feature' : 'Add Monster Feature'}

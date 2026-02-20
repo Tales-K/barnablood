@@ -14,6 +14,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { MonsterFeatureDialog, type MonsterFeature } from '@/components/form/MonsterFeatureDialog';
+import { FeatureScopeDialog, type MonsterInfo } from '@/components/form/FeatureScopeDialog';
 import { CATEGORY_LABELS, CATEGORY_COLORS, type FeatureWithId, type FeatureCategory } from '@/types/feature';
 import { toast } from 'sonner';
 
@@ -26,21 +27,29 @@ export default function MonsterFeaturesPage() {
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [editingFeature, setEditingFeature] = useState<FeatureWithId | undefined>(undefined);
 
-    // Delete confirmation dialog
+    // Scope dialog — shared for edit and delete (multi-monster)
+    const [scopeDialog, setScopeDialog] = useState<{
+        open: boolean;
+        mode: 'edit' | 'delete';
+        featureId: string;
+        category: FeatureCategory;
+        feature: MonsterFeature;
+        monsters: MonsterInfo[];
+    } | null>(null);
+
+    // Simple delete confirm (used when monsterCount <= 1)
     const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; feature: FeatureWithId | null }>({
         open: false,
         feature: null,
     });
     const [isDeleting, setIsDeleting] = useState(false);
 
-    // Scope-conflict dialog (when editing a feature used by multiple monsters)
-    const [scopeDialog, setScopeDialog] = useState<{
-        open: boolean;
-        featureId: string;
-        category: FeatureCategory;
-        feature: MonsterFeature;
-        monsterCount: number;
-    } | null>(null);
+    const reloadFeatures = () => {
+        fetch('/api/features')
+            .then(res => res.json())
+            .then(data => setFeatures(data.features || []))
+            .catch(err => console.error('Failed to reload features:', err));
+    };
 
     useEffect(() => {
         fetch('/api/features')
@@ -69,55 +78,87 @@ export default function MonsterFeaturesPage() {
     const handleEditSave = async (category: FeatureCategory, feature: MonsterFeature, featureId?: string) => {
         if (!featureId) return;
         try {
-            const infoRes = await fetch(`/api/features/${featureId}`);
-            const { monsterCount } = await infoRes.json() as { monsterCount: number };
-            if (monsterCount > 1) {
-                setScopeDialog({ open: true, featureId, category, feature, monsterCount });
+            const res = await fetch(`/api/features/${featureId}`);
+            const { monsters } = await res.json() as { monsters: MonsterInfo[] };
+            if (monsters.length > 1) {
+                setScopeDialog({ open: true, mode: 'edit', featureId, category, feature, monsters });
             } else {
-                await applyEdit(featureId, category, feature, 'all');
+                await applyEditAll(featureId, category, feature);
             }
         } catch {
             toast.error('Failed to update feature');
         }
     };
 
-    const applyEdit = async (
-        featureId: string,
-        category: FeatureCategory,
-        feature: MonsterFeature,
-        scope: 'all' | 'this'
-    ) => {
+    const applyEditAll = async (featureId: string, category: FeatureCategory, feature: MonsterFeature) => {
         const res = await fetch(`/api/features/${featureId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ feature: { ...feature, Category: category }, scope }),
+            body: JSON.stringify({ feature: { ...feature, Category: category }, scope: 'all' }),
         });
         if (!res.ok) { toast.error('Failed to update feature'); return; }
         const result = await res.json();
-        const updatedId = result.newFeatureId as string;
-        const updated: FeatureWithId = { ...feature, Category: category, id: updatedId };
+        const updated: FeatureWithId = { ...feature, Category: category, id: result.newFeatureId };
         setFeatures(prev => prev.map(f => (f.id === featureId ? updated : f)));
         toast.success('Feature updated');
     };
 
-    const openDelete = (feature: FeatureWithId) => {
-        setDeleteDialog({ open: true, feature });
+    const applyEditSelected = async (
+        featureId: string, category: FeatureCategory, feature: MonsterFeature, monsterIds: string[]
+    ) => {
+        const res = await fetch(`/api/features/${featureId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ feature: { ...feature, Category: category }, scope: 'selected', monsterIds }),
+        });
+        if (!res.ok) { toast.error('Failed to update feature'); return; }
+        toast.success('New copy created and assigned to selected monsters');
+        reloadFeatures();
     };
 
-    const handleConfirmDelete = async () => {
-        if (!deleteDialog.feature) return;
+    const openDelete = async (feat: FeatureWithId) => {
+        const count = feat.monsterCount ?? 0;
+        if (count > 1) {
+            try {
+                const res = await fetch(`/api/features/${feat.id}`);
+                const { monsters } = await res.json() as { monsters: MonsterInfo[] };
+                setScopeDialog({ open: true, mode: 'delete', featureId: feat.id, category: feat.Category, feature: feat, monsters });
+            } catch {
+                toast.error('Failed to load monster list');
+            }
+        } else {
+            setDeleteDialog({ open: true, feature: feat });
+        }
+    };
+
+    const execDelete = async (featureId: string, monsterIds?: string[]) => {
         setIsDeleting(true);
         try {
-            const res = await fetch(`/api/features/${deleteDialog.feature.id}`, { method: 'DELETE' });
+            const res = await fetch(`/api/features/${featureId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: monsterIds ? JSON.stringify({ monsterIds }) : undefined,
+            });
             if (!res.ok) throw new Error();
-            setFeatures(prev => prev.filter(f => f.id !== deleteDialog.feature!.id));
-            toast.success('Feature deleted');
+            const result = await res.json() as { featureDeleted: boolean };
+            if (result.featureDeleted) {
+                setFeatures(prev => prev.filter(f => f.id !== featureId));
+                toast.success('Feature deleted');
+            } else {
+                toast.success('Feature removed from selected monsters');
+                reloadFeatures();
+            }
         } catch {
             toast.error('Failed to delete feature');
         } finally {
             setIsDeleting(false);
-            setDeleteDialog({ open: false, feature: null });
         }
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deleteDialog.feature) return;
+        await execDelete(deleteDialog.feature.id);
+        setDeleteDialog({ open: false, feature: null });
     };
 
     return (
@@ -164,6 +205,12 @@ export default function MonsterFeaturesPage() {
                                         {feat.Usage && (
                                             <span className="text-xs text-muted-foreground">({feat.Usage})</span>
                                         )}
+                                        <span
+                                            className="text-xs text-muted-foreground shrink-0"
+                                            title={`Used by ${feat.monsterCount ?? 0} monster${(feat.monsterCount ?? 0) !== 1 ? 's' : ''}`}
+                                        >
+                                            {feat.monsterCount ?? 0} monster{(feat.monsterCount ?? 0) !== 1 ? 's' : ''}
+                                        </span>
                                         <div className="flex gap-1 ml-auto shrink-0">
                                             <Button
                                                 size="icon"
@@ -203,40 +250,35 @@ export default function MonsterFeaturesPage() {
                 editingFeature={editingFeature}
             />
 
-            {/* Scope conflict dialog */}
+            {/* Scope dialog — edit & delete (multi-monster) */}
             {scopeDialog && (
-                <Dialog open={scopeDialog.open} onOpenChange={(open) => !open && setScopeDialog(null)}>
-                    <DialogContent className="max-w-sm">
-                        <DialogHeader>
-                            <DialogTitle>Update Feature</DialogTitle>
-                            <DialogDescription>
-                                This feature is used by <strong>{scopeDialog.monsterCount}</strong> monsters. How would you like to apply the changes?
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="flex flex-col gap-3 pt-2">
-                            <Button
-                                onClick={async () => {
-                                    setScopeDialog(null);
-                                    await applyEdit(scopeDialog.featureId, scopeDialog.category, scopeDialog.feature, 'all');
-                                }}
-                            >
-                                Update all {scopeDialog.monsterCount} monsters
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={async () => {
-                                    setScopeDialog(null);
-                                    await applyEdit(scopeDialog.featureId, scopeDialog.category, scopeDialog.feature, 'this');
-                                }}
-                            >
-                                Detach — only update in this view
-                            </Button>
-                        </div>
-                    </DialogContent>
-                </Dialog>
+                <FeatureScopeDialog
+                    open={scopeDialog.open}
+                    onClose={() => setScopeDialog(null)}
+                    mode={scopeDialog.mode}
+                    monsters={scopeDialog.monsters}
+                    onApplyToAll={() => {
+                        const d = scopeDialog;
+                        setScopeDialog(null);
+                        if (d.mode === 'edit') {
+                            applyEditAll(d.featureId, d.category, d.feature);
+                        } else {
+                            execDelete(d.featureId);
+                        }
+                    }}
+                    onApplyToSelected={(monsterIds) => {
+                        const d = scopeDialog;
+                        setScopeDialog(null);
+                        if (d.mode === 'edit') {
+                            applyEditSelected(d.featureId, d.category, d.feature, monsterIds);
+                        } else {
+                            execDelete(d.featureId, monsterIds);
+                        }
+                    }}
+                />
             )}
 
-            {/* Delete confirmation */}
+            {/* Simple delete confirm (monsterCount <= 1) */}
             <Dialog
                 open={deleteDialog.open}
                 onOpenChange={(open) => !open && setDeleteDialog({ open: false, feature: null })}

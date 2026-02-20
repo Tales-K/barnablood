@@ -417,8 +417,8 @@ export default function CombatPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Reset Combat Session?</DialogTitle>
+            <DialogDescription>Are you sure you want to reset the combat session? This will clear all monsters and cannot be undone.</DialogDescription>
           </DialogHeader>
-          <p className="text-muted-foreground">Are you sure you want to reset the combat session? This will clear all monsters and cannot be undone.</p>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setIsResetDialogOpen(false)}>
               Cancel

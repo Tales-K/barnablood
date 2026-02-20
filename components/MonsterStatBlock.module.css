@@ -12,7 +12,7 @@
 }
 
 .statBlock {
-  width: 400px;
+  max-width: 400px;
   background-color: #fdf1dc;
   padding: 0.6em;
   padding-bottom: 0.5em;

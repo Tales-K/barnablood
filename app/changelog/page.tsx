@@ -19,6 +19,53 @@ const BADGE_COLORS: Record<string, string> = {
 
 const changelog: ChangeEntry[] = [
     {
+        version: '0.2.6',
+        sections: [
+            {
+                label: 'Fixed',
+                items: [
+                    'Importing a feature from the library no longer creates a duplicate — the existing feature is reused directly',
+                ],
+            },
+        ],
+    },
+    {
+        version: '0.2.5',
+        sections: [
+            {
+                label: 'Changed',
+                items: [
+                    'Editing or deleting a feature used by multiple monsters now lets you choose: apply to all, or select specific monsters',
+                    'Edit: selecting specific monsters creates a copy of the feature assigned only to those monsters',
+                    'Delete: selecting specific monsters removes the feature only from those; the feature doc is kept if others still use it',
+                ],
+            },
+        ],
+    },
+    {
+        version: '0.2.4',
+        sections: [
+            {
+                label: 'Added',
+                items: [
+                    'Monster Features page now shows how many monsters are using each feature',
+                ],
+            },
+        ],
+    },
+    {
+        version: '0.2.3',
+        sections: [
+            {
+                label: 'Added',
+                items: [
+                    'Clicking a feature in the monster stat block preview now scrolls to that feature in the form list and opens the edit dialog',
+                    'Clicking any prop in the stat block preview scrolls to and focuses the corresponding input field',
+                ],
+            },
+        ],
+    },
+    {
         version: '0.2.2',
         sections: [
             {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { listFeatures, saveFeature } from '@/lib/firestoreFeatures';
+import { listMonstersFromFirestore } from '@/lib/firestore';
 import { featureSchema } from '@/types/feature';
 import { z } from 'zod';
 
@@ -12,8 +13,26 @@ export async function GET() {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const features = await listFeatures(session.user.email);
-        return NextResponse.json({ features });
+        const [features, monsters] = await Promise.all([
+            listFeatures(session.user.email),
+            listMonstersFromFirestore(session.user.email),
+        ]);
+
+        // Build featureId -> monster count map
+        const countMap: Record<string, number> = {};
+        for (const { monster } of monsters) {
+            const ids: string[] = (monster as { FeatureIds?: string[] }).FeatureIds ?? [];
+            for (const id of ids) {
+                countMap[id] = (countMap[id] ?? 0) + 1;
+            }
+        }
+
+        const featuresWithCounts = features.map(f => ({
+            ...f,
+            monsterCount: countMap[f.id] ?? 0,
+        }));
+
+        return NextResponse.json({ features: featuresWithCounts });
     } catch (error) {
         console.error('[GET /api/features]', error);
         return NextResponse.json({ error: 'Failed to list features' }, { status: 500 });

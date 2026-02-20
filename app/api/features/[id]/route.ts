@@ -59,7 +59,14 @@ export async function GET(
 
         const affectedMonsters = await getMonstersUsingFeature(session.user.email, id);
 
-        return NextResponse.json({ feature, monsterCount: affectedMonsters.length });
+        return NextResponse.json({
+            feature,
+            monsterCount: affectedMonsters.length,
+            monsters: affectedMonsters.map(({ id: monId, monster }) => ({
+                id: monId,
+                name: (monster as Record<string, unknown>).Name as string ?? monId,
+            })),
+        });
     } catch (error) {
         console.error('[GET /api/features/[id]]', error);
         return NextResponse.json({ error: 'Failed to get feature' }, { status: 500 });
@@ -87,8 +94,9 @@ export async function PUT(
         const { id } = await params;
         const body = await request.json();
         const validated = featureSchema.parse(body.feature);
-        const scope: 'all' | 'this' = body.scope ?? 'all';
+        const scope: 'all' | 'this' | 'selected' = body.scope ?? 'all';
         const monsterId: string | undefined = body.monsterId;
+        const monsterIds: string[] | undefined = body.monsterIds;
         const userId = session.user.email;
 
         if (scope === 'all') {
@@ -112,7 +120,7 @@ export async function PUT(
                 newFeatureId: id,
                 updatedMonsters: affected.length,
             });
-        } else {
+        } else if (scope === 'this') {
             // scope === 'this'
             if (!monsterId) {
                 return NextResponse.json(
@@ -146,6 +154,32 @@ export async function PUT(
             await saveMonsterToFirestore(userId, monsterId, rebuilt);
 
             return NextResponse.json({ success: true, newFeatureId });
+        } else {
+            // scope === 'selected': create a new feature doc and replace the old ID only in chosen monsters.
+            const ids = monsterIds ?? [];
+            if (ids.length === 0) {
+                return NextResponse.json(
+                    { error: 'monsterIds is required when scope is "selected"' },
+                    { status: 400 }
+                );
+            }
+
+            const newFeatureId = crypto.randomUUID();
+            await saveFeature(userId, newFeatureId, validated);
+
+            const { getMonsterFromFirestore } = await import('@/lib/firestore');
+            await Promise.all(
+                ids.map(async (monId) => {
+                    const monsterData = (await getMonsterFromFirestore(userId, monId)) as Record<string, unknown> | null;
+                    if (!monsterData) return;
+                    const oldIds: string[] = (monsterData.FeatureIds as string[]) ?? [];
+                    const newIds = oldIds.map((fid) => (fid === id ? newFeatureId : fid));
+                    const rebuilt = await rebuildEmbeddedArrays(userId, { ...monsterData, FeatureIds: newIds });
+                    await saveMonsterToFirestore(userId, monId, rebuilt);
+                })
+            );
+
+            return NextResponse.json({ success: true, newFeatureId });
         }
     } catch (error) {
         if (error instanceof z.ZodError) {
@@ -161,10 +195,12 @@ export async function PUT(
 
 // ---------------------------------------------------------------------------
 // DELETE /api/features/[id]
-// Deletes the feature doc and removes the ID from every monster's FeatureIds.
+// Body (optional): { monsterIds?: string[] }
+//   If monsterIds is provided  → remove from those monsters only; delete doc if nobody uses it any more.
+//   If monsterIds is absent    → delete from all monsters + delete the doc.
 // ---------------------------------------------------------------------------
 export async function DELETE(
-    _request: NextRequest,
+    request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
@@ -176,26 +212,39 @@ export async function DELETE(
         const { id } = await params;
         const userId = session.user.email;
 
-        // Grab affected monsters BEFORE deleting the feature doc.
+        // Parse optional body
+        let selectedMonsterIds: string[] | undefined;
+        try {
+            const body = await request.json();
+            if (Array.isArray(body?.monsterIds)) selectedMonsterIds = body.monsterIds;
+        } catch { /* no body */ }
+
+        // Grab all affected monsters.
         const affected = await getMonstersUsingFeature(userId, id);
 
-        // 1. Delete the feature document.
-        await deleteFeature(userId, id);
+        const targetsAll = !selectedMonsterIds;
+        const targets = targetsAll
+            ? affected
+            : affected.filter(({ id: monId }) => selectedMonsterIds!.includes(monId));
 
-        // 2. Remove the feature ID from each monster's FeatureIds + rebuild embedded arrays.
+        // Remove the feature ID from the target monsters.
         await Promise.all(
-            affected.map(async ({ id: monId, monster }) => {
+            targets.map(async ({ id: monId, monster }) => {
                 const m = monster as Record<string, unknown>;
-                const newFeatureIds = ((m.FeatureIds as string[]) ?? []).filter(
-                    (fid) => fid !== id
-                );
+                const newFeatureIds = ((m.FeatureIds as string[]) ?? []).filter((fid) => fid !== id);
                 const withoutId = { ...m, FeatureIds: newFeatureIds };
                 const rebuilt = await rebuildEmbeddedArrays(userId, withoutId);
                 await saveMonsterToFirestore(userId, monId, rebuilt);
             })
         );
 
-        return NextResponse.json({ success: true, updatedMonsters: affected.length });
+        // Delete the feature doc if no monsters reference it anymore.
+        const remaining = affected.length - targets.length;
+        if (remaining === 0) {
+            await deleteFeature(userId, id);
+        }
+
+        return NextResponse.json({ success: true, updatedMonsters: targets.length, featureDeleted: remaining === 0 });
     } catch (error) {
         console.error('[DELETE /api/features/[id]]', error);
         return NextResponse.json({ error: 'Failed to delete feature' }, { status: 500 });

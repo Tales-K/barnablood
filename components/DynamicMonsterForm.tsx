@@ -24,11 +24,15 @@ interface DynamicMonsterFormProps {
   onFieldFocus?: (fieldId: string) => void;
   /** Features managed by the parent page (not RHF). */
   features: FeatureWithId[];
-  onAddFeature: (category: FeatureCategory, feature: MonsterFeature) => void;
+  onAddFeature: (category: FeatureCategory, feature: MonsterFeature, existingFeatureId?: string) => void;
   onEditFeature: (featureId: string, category: FeatureCategory, feature: MonsterFeature) => void;
   onRemoveFeature: (featureId: string) => void;
   /** Features already in the library — shown in the import tab. */
   availableFeatures?: FeatureWithId[];
+  /** When set, scroll to this feature and open its edit dialog. */
+  openEditForFeatureId?: string;
+  /** Called after the dialog has been opened for openEditForFeatureId so the parent can reset the value. */
+  onFeatureEditOpened?: () => void;
 }
 
 export function DynamicMonsterForm({
@@ -42,6 +46,8 @@ export function DynamicMonsterForm({
   onEditFeature,
   onRemoveFeature,
   availableFeatures = [],
+  openEditForFeatureId,
+  onFeatureEditOpened,
 }: DynamicMonsterFormProps) {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     basic: true,
@@ -54,6 +60,22 @@ export function DynamicMonsterForm({
   });
   const [isFeatureDialogOpen, setIsFeatureDialogOpen] = useState(false);
   const [editingFeature, setEditingFeature] = useState<FeatureWithId | undefined>(undefined);
+
+  // When a feature ID is passed in from the parent (card click), scroll to it and open the edit dialog
+  useEffect(() => {
+    if (!openEditForFeatureId) return;
+    const feature = features.find(f => f.id === openEditForFeatureId);
+    if (!feature) return;
+    setExpandedSections(prev => ({ ...prev, features: true }));
+    setTimeout(() => {
+      const el = document.getElementById(`feature-${openEditForFeatureId}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setEditingFeature(feature);
+      setIsFeatureDialogOpen(true);
+      onFeatureEditOpened?.();
+    }, 300);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openEditForFeatureId]);
 
   // Expand section if any field inside has an error
   useEffect(() => {
@@ -99,7 +121,13 @@ export function DynamicMonsterForm({
 
   const handleDialogSave = (category: FeatureCategory, feature: MonsterFeature, featureId?: string) => {
     if (featureId) {
-      onEditFeature(featureId, category, feature);
+      const isAlreadyInMonster = features.some(f => f.id === featureId);
+      if (isAlreadyInMonster) {
+        onEditFeature(featureId, category, feature);
+      } else {
+        // Imported from library — reuse the existing feature id
+        onAddFeature(category, feature, featureId);
+      }
     } else {
       onAddFeature(category, feature);
     }
@@ -506,7 +534,7 @@ export function DynamicMonsterForm({
       >
         <div className="space-y-3">
           {features.map((feat) => (
-            <div key={feat.id} className="border rounded-md p-3 flex gap-3 items-start">
+            <div key={feat.id} id={`feature-${feat.id}`} className="border rounded-md p-3 flex gap-3 items-start">
               <div className="flex-1 min-w-0 space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <Badge

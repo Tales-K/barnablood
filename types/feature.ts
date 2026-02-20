@@ -30,4 +30,6 @@ export interface FeatureWithId extends Feature {
     id: string;
     /** true for features not yet persisted to Firestore */
     isNew?: boolean;
+    /** number of monsters referencing this feature */
+    monsterCount?: number;
 }

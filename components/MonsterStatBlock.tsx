@@ -247,13 +247,17 @@ export default function MonsterStatBlock({
             <span className={styles.propertyName}>Challenge</span> {monster.Challenge}
           </div>
 
+          <svg className={styles.taperedRule} height="5" width="400">
+            <polyline points="0,0 400,2.5 0,5" fill="#922610" stroke="#922610" />
+          </svg>
+
           {monster.Traits.length > 0 && (
             <>
               {monster.Traits.map((trait, index) => (
                 <div 
                   key={index} 
                   className={styles.propertyBlock}
-                  onClick={() => handleFieldClick('Traits')}
+                  onClick={() => handleFieldClick(`Traits.${index}`)}
                   style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
                 >
                   <span className={styles.featureName}>{trait.Name}.</span>{' '}
@@ -273,7 +277,7 @@ export default function MonsterStatBlock({
                 <div 
                   key={index} 
                   className={styles.action}
-                  onClick={() => handleFieldClick('Actions')}
+                  onClick={() => handleFieldClick(`Actions.${index}`)}
                   style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
                 >
                   <span className={styles.actionName}>{action.Name}.</span>{' '}
@@ -293,7 +297,7 @@ export default function MonsterStatBlock({
                 <div 
                   key={index} 
                   className={styles.action}
-                  onClick={() => handleFieldClick('Reactions')}
+                  onClick={() => handleFieldClick(`Reactions.${index}`)}
                   style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
                 >
                   <span className={styles.actionName}>{reaction.Name}.</span>{' '}
@@ -313,7 +317,7 @@ export default function MonsterStatBlock({
                 <div 
                   key={index} 
                   className={styles.action}
-                  onClick={() => handleFieldClick('LegendaryActions')}
+                  onClick={() => handleFieldClick(`LegendaryActions.${index}`)}
                   style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
                 >
                   <span className={styles.actionName}>{action.Name}.</span>{' '}
