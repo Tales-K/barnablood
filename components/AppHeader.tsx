@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
@@ -48,7 +49,7 @@ export default function AppHeader() {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center gap-8">
             <Link href="/monsters" className="flex items-center gap-3">
-              <img src="/logo.png" alt="BarnaBlood Logo" width={40} height={40} className="rounded" />
+              <Image src="/logo.png" alt="BarnaBlood Logo" width={40} height={40} className="rounded" />
               <span className="flex flex-col items-start">
                 <span className="text-2xl font-bold" style={{ fontFamily: 'var(--font-cinzel)' }}>
                   <span className="text-foreground">Barna</span><span className="text-red-600">Blood</span>

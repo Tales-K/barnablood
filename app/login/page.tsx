@@ -1,5 +1,4 @@
 import { signIn } from '@/lib/auth';
-import { redirect } from 'next/navigation';
 import Image from 'next/image';
 
 export default function LoginPage() {
@@ -23,7 +22,7 @@ export default function LoginPage() {
         >
           <button
             type="submit"
-            className="w-full flex items-center justify-center gap-3 rounded-md bg-white px-4 py-3 text-gray-900 font-semibold hover:bg-gray-100 transition-colors"
+            className="w-full flex items-center justify-center gap-3 rounded-md bg-white px-4 py-3 text-gray-900 font-semibold hover:bg-gray-100 active:bg-gray-200 transition-colors cursor-pointer"
           >
             <svg className="h-6 w-6" viewBox="0 0 24 24">
               <path
