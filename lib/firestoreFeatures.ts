@@ -1,7 +1,8 @@
-import { db } from './firestore';
+import { getDb } from './firestore';
 import type { Feature } from '@/types/feature';
 
 export async function saveFeature(userId: string, featureId: string, feature: Feature) {
+    const db = getDb();
     await db
         .collection('users')
         .doc(userId)
@@ -11,6 +12,7 @@ export async function saveFeature(userId: string, featureId: string, feature: Fe
 }
 
 export async function getFeature(userId: string, featureId: string) {
+    const db = getDb();
     const doc = await db
         .collection('users')
         .doc(userId)
@@ -21,6 +23,7 @@ export async function getFeature(userId: string, featureId: string) {
 }
 
 export async function listFeatures(userId: string) {
+    const db = getDb();
     const snapshot = await db
         .collection('users')
         .doc(userId)
@@ -30,6 +33,7 @@ export async function listFeatures(userId: string) {
 }
 
 export async function deleteFeature(userId: string, featureId: string) {
+    const db = getDb();
     await db
         .collection('users')
         .doc(userId)

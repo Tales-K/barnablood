@@ -19,6 +19,24 @@ const BADGE_COLORS: Record<string, string> = {
 
 const changelog: ChangeEntry[] = [
     {
+        version: '0.2.2',
+        sections: [
+            {
+                label: 'Fixed',
+                items: [
+                    'Firebase Admin SDK now initializes lazily (on first request) — fixes Railway build failure caused by missing env vars at compile time',
+                    'firestoreCombat and firestoreFeatures updated to use lazy getDb() — no more broken db import at module load',
+                ],
+            },
+            {
+                label: 'Changed',
+                items: [
+                    'GCS and Firebase credentials now read from individual env vars (GCS_* and FIREBASE_*) — no JSON blobs required',
+                ],
+            },
+        ],
+    },
+    {
         version: '0.2.1',
         sections: [
             {

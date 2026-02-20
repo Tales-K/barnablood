@@ -1,7 +1,6 @@
 import { listMonsters } from './gcs';
-import { saveMonsterToFirestore, listMonstersFromFirestore } from './firestore';
+import { saveMonsterToFirestore, listMonstersFromFirestore, getDb } from './firestore';
 import { saveFeature } from './firestoreFeatures';
-import { getFirestore } from 'firebase-admin/firestore';
 import type { FeatureCategory } from '@/types/feature';
 
 // ---------------------------------------------------------------------------
@@ -12,11 +11,13 @@ import type { FeatureCategory } from '@/types/feature';
 // Runs at most once per user (guarded by the `featuresMigrated` flag).
 // ---------------------------------------------------------------------------
 export async function migrateEmbeddedFeaturesToCollection(userEmail: string) {
-    const db = getFirestore();
+    console.log(`[MIGRATION] migrateEmbeddedFeaturesToCollection called for: ${userEmail}`);
+    const db = getDb();
     const userRef = db.collection('users').doc(userEmail);
     const userDoc = await userRef.get();
 
     if (userDoc.data()?.featuresMigrated) {
+        console.log(`[MIGRATION] featuresMigrated already set for ${userEmail}, skipping.`);
         return; // already done
     }
 
@@ -28,13 +29,13 @@ export async function migrateEmbeddedFeaturesToCollection(userEmail: string) {
     let totalFeatures = 0;
     for (const { id: monsterId, monster } of monsters) {
         // Skip monsters that already use the new FeatureIds model.
-        if (Array.isArray((monster as any).FeatureIds)) continue;
+        if (Array.isArray((monster as Record<string, unknown>).FeatureIds)) continue;
 
         const featureIds: string[] = [];
 
         for (const category of CATEGORIES) {
             const entries: Array<{ Name: string; Content: string; Usage?: string }> =
-                (monster as any)[category] ?? [];
+                ((monster as Record<string, unknown>)[category] as Array<{ Name: string; Content: string; Usage?: string }>) ?? [];
 
             for (const entry of entries) {
                 const featureId = crypto.randomUUID();
@@ -65,6 +66,7 @@ export async function migrateEmbeddedFeaturesToCollection(userEmail: string) {
 }
 
 export async function migrateUserMonstersIfNeeded(userEmail: string) {
+    console.log(`[MIGRATION] migrateUserMonstersIfNeeded called for: ${userEmail}`);
     const firestoreMonsters = await listMonstersFromFirestore(userEmail);
     if (firestoreMonsters.length > 0) {
         console.log(`[MIGRATION] User ${userEmail} already migrated to Firestore.`);
@@ -82,7 +84,7 @@ export async function migrateUserMonstersIfNeeded(userEmail: string) {
     }
     // Optionally, mark user as migrated (e.g., set a flag in Firestore)
     try {
-        const db = getFirestore();
+        const db = getDb();
         await db.collection('users').doc(userEmail).set({ migrated: true }, { merge: true });
         console.log(`[MIGRATION] Marked user ${userEmail} as migrated.`);
     } catch (err) {

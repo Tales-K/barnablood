@@ -1,15 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { APP_VERSION } from '@/lib/version';
 
 export default function AppHeader() {
-  const router = useRouter();
   const pathname = usePathname();
   const [userEmail, setUserEmail] = useState('');
 
@@ -31,8 +30,7 @@ export default function AppHeader() {
 
   const handleSignOut = async () => {
     try {
-      await fetch('/api/auth/signout', { method: 'POST' });
-      router.push('/login');
+      await signOut({ callbackUrl: '/login' });
     } catch (error) {
       console.error('Sign out failed:', error);
       toast.error('Failed to sign out');

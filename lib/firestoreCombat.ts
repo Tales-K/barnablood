@@ -1,8 +1,9 @@
-import { db } from './firestore';
+import { getDb } from './firestore';
 
 const ACTIVE_SESSION_ID = 'active';
 
 export async function saveCombatSession(userId: string, session: object) {
+    const db = getDb();
     await db
         .collection('users')
         .doc(userId)
@@ -12,6 +13,7 @@ export async function saveCombatSession(userId: string, session: object) {
 }
 
 export async function getCombatSession(userId: string) {
+    const db = getDb();
     const doc = await db
         .collection('users')
         .doc(userId)
@@ -22,6 +24,7 @@ export async function getCombatSession(userId: string) {
 }
 
 export async function deleteCombatSession(userId: string) {
+    const db = getDb();
     await db
         .collection('users')
         .doc(userId)

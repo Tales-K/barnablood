@@ -5,30 +5,23 @@ import type { Monster } from '@/types/monster';
 let storage: Storage | null = null;
 let bucket: ReturnType<Storage['bucket']> | null = null;
 
-// Try to initialize GCS with either file path (local) or JSON credentials (Railway)
+// Initialize GCS from individual GCS_* env vars
 if (process.env.GCS_BUCKET_NAME) {
     try {
-        // Option 1: Use JSON credentials from environment variable (Railway)
-        if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-            const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
-            storage = new Storage({
-                credentials: credentials,
-                projectId: credentials.project_id,
-            });
-            console.log('GCS initialized with JSON credentials');
-        }
-        // Option 2: Use file path (Local development)
-        else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-            storage = new Storage({
-                keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-            });
-            console.log('GCS initialized with credentials file');
-        }
-
-        if (storage) {
-            bucket = storage.bucket(process.env.GCS_BUCKET_NAME);
-            console.log(`GCS bucket configured: ${process.env.GCS_BUCKET_NAME}`);
-        }
+        storage = new Storage({
+            projectId: process.env.GCS_PROJECT_ID,
+            credentials: {
+                type: process.env.GCS_TYPE,
+                project_id: process.env.GCS_PROJECT_ID,
+                private_key_id: process.env.GCS_PRIVATE_KEY_ID,
+                private_key: process.env.GCS_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+                client_email: process.env.GCS_CLIENT_EMAIL,
+                client_id: process.env.GCS_CLIENT_ID,
+                universe_domain: process.env.GCS_UNIVERSE_DOMAIN,
+            },
+        });
+        bucket = storage.bucket(process.env.GCS_BUCKET_NAME);
+        console.log(`GCS bucket configured: ${process.env.GCS_BUCKET_NAME}`);
     } catch (error) {
         console.error('Failed to initialize GCS client:', error);
     }
@@ -40,7 +33,7 @@ function ensureGCS() {
     if (!bucket) {
         throw new Error(
             'Google Cloud Storage is not configured. ' +
-            'Please ensure GOOGLE_APPLICATION_CREDENTIALS and GCS_BUCKET_NAME are set in .env.local'
+            'Please ensure GCS_BUCKET_NAME and GCS_* credentials are set in your environment.'
         );
     }
     return bucket;
