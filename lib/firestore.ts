@@ -46,3 +46,56 @@ export async function getMonstersUsingFeature(userId: string, featureId: string)
         .get();
     return snapshot.docs.map(doc => ({ id: doc.id, monster: doc.data() }));
 }
+
+// ─── Image extraction daily rate limit ───────────────────────────────────────
+
+const DAILY_IMAGE_LIMIT = 20;
+
+function todayUTC(): string {
+    return new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+}
+
+function imageUsageRef(db: FirebaseFirestore.Firestore, userId: string, date: string) {
+    return db
+        .collection('users')
+        .doc(userId)
+        .collection('usage')
+        .doc(`image-extraction-${date}`);
+}
+
+/**
+ * Atomically increments the user's daily image extraction counter.
+ * Returns { allowed: true, used: number } if under the limit,
+ * or { allowed: false, used: number, limit: number } if the limit is reached.
+ */
+export async function checkAndIncrementImageUsage(
+    userId: string,
+): Promise<{ allowed: true; used: number } | { allowed: false; used: number; limit: number }> {
+    const db = getDb();
+    const date = todayUTC();
+    const ref = imageUsageRef(db, userId, date);
+
+    const result = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        const current: number = snap.exists ? (snap.data()?.count ?? 0) : 0;
+
+        if (current >= DAILY_IMAGE_LIMIT) {
+            return { allowed: false as const, used: current, limit: DAILY_IMAGE_LIMIT };
+        }
+
+        tx.set(ref, { count: current + 1, date, updatedAt: new Date().toISOString() }, { merge: true });
+        return { allowed: true as const, used: current + 1 };
+    });
+
+    return result;
+}
+
+/**
+ * Returns the current daily image extraction usage for a user (read-only).
+ */
+export async function getImageUsageToday(userId: string): Promise<{ used: number; limit: number }> {
+    const db = getDb();
+    const snap = await imageUsageRef(db, userId, todayUTC()).get();
+    const used: number = snap.exists ? (snap.data()?.count ?? 0) : 0;
+    return { used, limit: DAILY_IMAGE_LIMIT };
+}

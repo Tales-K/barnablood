@@ -14,6 +14,9 @@ import MonsterStatBlock from '@/components/MonsterStatBlock';
 import type { FeatureWithId, FeatureCategory } from '@/types/feature';
 import type { MonsterFeature } from '@/components/form/MonsterFeatureDialog';
 import { resolveImportedFeatures } from '@/lib/resolveImportedFeatures';
+import { FillFromImageModal } from '@/components/FillFromImageModal';
+import { applyExtractedMonster } from '@/lib/applyExtractedMonster';
+import type { ExtractedMonster } from '@/lib/validateExtractedMonster';
 import {
   Dialog,
   DialogContent,
@@ -35,6 +38,7 @@ export default function EditMonsterPage() {
   const [openEditForFeatureId, setOpenEditForFeatureId] = useState<string | undefined>(undefined);
   const [availableMonsters, setAvailableMonsters] = useState<Array<{id: string; monster: Monster}>>([]);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isFillFromImageOpen, setIsFillFromImageOpen] = useState(false);
 
   // Scope-conflict dialog state
   const [scopeDialog, setScopeDialog] = useState<{
@@ -216,6 +220,10 @@ export default function EditMonsterPage() {
 
   const handleRemoveFeature = (featureId: string) => {
     setFeatures(prev => prev.filter(f => f.id !== featureId));
+  };
+
+  const handleFillFromImage = (extracted: ExtractedMonster) => {
+    applyExtractedMonster(extracted, reset, availableFeatures, setFeatures);
   };
 
   const buildEmbeddedArrays = (feats: FeatureWithId[]) => ({
@@ -446,6 +454,14 @@ export default function EditMonsterPage() {
               <Button
                 type="button"
                 variant="outline"
+                onClick={() => setIsFillFromImageOpen(true)}
+              >
+                Fill from Image
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => {
                   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(formData, null, 2));
                   const dlAnchor = document.createElement('a');
@@ -509,6 +525,12 @@ export default function EditMonsterPage() {
           </CardContent>
         </Card>
       </main>
+
+      <FillFromImageModal
+        open={isFillFromImageOpen}
+        onOpenChange={setIsFillFromImageOpen}
+        onExtracted={handleFillFromImage}
+      />
 
       {/* Feature scope conflict dialog */}
       {scopeDialog && (

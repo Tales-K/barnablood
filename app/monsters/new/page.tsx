@@ -16,6 +16,9 @@ import MonsterStatBlock from '@/components/MonsterStatBlock';
 import type { FeatureWithId } from '@/types/feature';
 import type { FeatureCategory, MonsterFeature } from '@/components/form/MonsterFeatureDialog';
 import { resolveImportedFeatures } from '@/lib/resolveImportedFeatures';
+import { FillFromImageModal } from '@/components/FillFromImageModal';
+import { applyExtractedMonster } from '@/lib/applyExtractedMonster';
+import type { ExtractedMonster } from '@/lib/validateExtractedMonster';
 
 export default function NewMonsterPage() {
   const router = useRouter();
@@ -25,6 +28,7 @@ export default function NewMonsterPage() {
   const [features, setFeatures] = useState<FeatureWithId[]>([]);
   const [availableFeatures, setAvailableFeatures] = useState<FeatureWithId[]>([]);
   const [openEditForFeatureId, setOpenEditForFeatureId] = useState<string | undefined>(undefined);
+  const [isFillFromImageOpen, setIsFillFromImageOpen] = useState(false);
   
   const {
     register,
@@ -89,6 +93,10 @@ export default function NewMonsterPage() {
     setFeatures(resolveImportedFeatures(found.monster, availableFeatures));
     setIsImportDialogOpen(false);
     toast.success(`Filled from ${found.monster.Name}`);
+  };
+
+  const handleFillFromImage = (extracted: ExtractedMonster) => {
+    applyExtractedMonster(extracted, reset, availableFeatures, setFeatures);
   };
 
   // ---- Feature callbacks (features are all local/new until submit) ----
@@ -339,7 +347,20 @@ export default function NewMonsterPage() {
               >
                 Fill from JSON
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsFillFromImageOpen(true)}
+              >
+                Fill from Image
+              </Button>
             </div>
+
+            <FillFromImageModal
+              open={isFillFromImageOpen}
+              onOpenChange={setIsFillFromImageOpen}
+              onExtracted={handleFillFromImage}
+            />
           </CardHeader>
           <CardContent>
             <form

@@ -19,6 +19,32 @@ const BADGE_COLORS: Record<string, string> = {
 
 const changelog: ChangeEntry[] = [
     {
+        version: '0.2.10',
+        sections: [
+            {
+                label: 'Added',
+                items: [
+                    'Image extraction is now rate-limited to 20 uses per user per day, tracked in Firestore',
+                    'Fill from Image modal shows current usage (e.g. "3 / 20 uses today") and blocks further extractions when the limit is reached',
+                ],
+            },
+        ],
+    },
+    {
+        version: '0.2.9',
+        sections: [
+            {
+                label: 'Added',
+                items: [
+                    'Fill from Image button on new and edit monster pages: drop, paste, or upload a stat block image and let OpenAI extract the data into the form',
+                    'Image drop zone supports drag-and-drop, clipboard paste (Ctrl+V) and file upload',
+                    'Extracted features reuse existing library entries when Name+Category match, otherwise new features are created — same logic as Fill from Monster',
+                    'New API route POST /api/monsters/from-image validates the OpenAI response before applying it',
+                ],
+            },
+        ],
+    },
+    {
         version: '0.2.8',
         sections: [
             {
