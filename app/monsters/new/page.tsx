@@ -15,13 +15,13 @@ import Link from 'next/link';
 import MonsterStatBlock from '@/components/MonsterStatBlock';
 import type { FeatureWithId } from '@/types/feature';
 import type { FeatureCategory, MonsterFeature } from '@/components/form/MonsterFeatureDialog';
+import { resolveImportedFeatures } from '@/lib/resolveImportedFeatures';
 
 export default function NewMonsterPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availableMonsters, setAvailableMonsters] = useState<Array<{ id: string; monster: Monster }>>([]);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [importedMonster, setImportedMonster] = useState<Monster | null>(null);
   const [features, setFeatures] = useState<FeatureWithId[]>([]);
   const [availableFeatures, setAvailableFeatures] = useState<FeatureWithId[]>([]);
   const [openEditForFeatureId, setOpenEditForFeatureId] = useState<string | undefined>(undefined);
@@ -68,13 +68,6 @@ export default function NewMonsterPage() {
 
   const formData = watch();
 
-  // Apply imported monster data when it changes
-  useEffect(() => {
-    if (importedMonster) {
-      reset(importedMonster);
-    }
-  }, [importedMonster, reset]);
-
   // Load available monsters + features library for importing
   useEffect(() => {
     fetch('/api/monsters')
@@ -90,14 +83,12 @@ export default function NewMonsterPage() {
   const handleImportMonster = (monsterId: string) => {
     const found = availableMonsters.find(m => m.id === monsterId);
     if (!found) return;
-
-    // Set imported monster data
-    const monsterCopy = { ...found.monster };
-    delete (monsterCopy as any).id;
-    setImportedMonster(monsterCopy);
-    
+    const monsterCopy = { ...found.monster } as Partial<Monster> & { id?: string };
+    delete monsterCopy.id;
+    reset(monsterCopy as Monster);
+    setFeatures(resolveImportedFeatures(found.monster, availableFeatures));
     setIsImportDialogOpen(false);
-    toast.success(`Imported ${found.monster.Name} data`);
+    toast.success(`Filled from ${found.monster.Name}`);
   };
 
   // ---- Feature callbacks (features are all local/new until submit) ----
@@ -303,11 +294,11 @@ export default function NewMonsterPage() {
             <div className="flex gap-2">
               <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline">Import Monster</Button>
+                  <Button variant="outline">Fill from Monster</Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Import Monster Data</DialogTitle>
+                    <DialogTitle>Fill from Monster</DialogTitle>
                   </DialogHeader>
                   <DialogDescription>
                     Select a monster to import its data. You can then modify it and save as a new monster.
@@ -331,10 +322,11 @@ export default function NewMonsterPage() {
                   if (!file) return;
                   try {
                     const text = await file.text();
-                    const json = JSON.parse(text);
+                    const json = JSON.parse(text) as Monster;
                     reset(json);
+                    setFeatures(resolveImportedFeatures(json, availableFeatures));
                     toast.success('Monster loaded from file!');
-                  } catch (err) {
+                  } catch {
                     toast.error('Invalid monster JSON file');
                   }
                   e.target.value = '';
@@ -345,11 +337,8 @@ export default function NewMonsterPage() {
                 variant="outline"
                 onClick={() => document.getElementById('monster-upload-json')?.click()}
               >
-                Upload Monster
+                Fill from JSON
               </Button>
-              <Link href="/monsters">
-                <Button variant="outline">Back to Monsters</Button>
-              </Link>
             </div>
           </CardHeader>
           <CardContent>

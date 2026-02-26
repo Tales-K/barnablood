@@ -19,6 +19,28 @@ const BADGE_COLORS: Record<string, string> = {
 
 const changelog: ChangeEntry[] = [
     {
+        version: '0.2.8',
+        sections: [
+            {
+                label: 'Fixed',
+                items: [
+                    'Fill from Monster and Fill from JSON now properly import features: existing library features are reused, unknown features are created as new entries on save',
+                ],
+            },
+        ],
+    },
+    {
+        version: '0.2.7',
+        sections: [
+            {
+                label: 'Added',
+                items: [
+                    'Monster edit page now has "Fill from Monster" and "Fill from JSON" buttons, matching the new monster page',
+                ],
+            },
+        ],
+    },
+    {
         version: '0.2.6',
         sections: [
             {

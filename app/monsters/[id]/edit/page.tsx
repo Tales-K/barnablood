@@ -13,13 +13,16 @@ import Link from 'next/link';
 import MonsterStatBlock from '@/components/MonsterStatBlock';
 import type { FeatureWithId, FeatureCategory } from '@/types/feature';
 import type { MonsterFeature } from '@/components/form/MonsterFeatureDialog';
+import { resolveImportedFeatures } from '@/lib/resolveImportedFeatures';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogTrigger,
 } from '@/components/ui/dialog';
+import { MonsterSearch } from '@/components/MonsterSearch';
 
 export default function EditMonsterPage() {
   const router = useRouter();
@@ -30,6 +33,8 @@ export default function EditMonsterPage() {
   const [features, setFeatures] = useState<FeatureWithId[]>([]);
   const [availableFeatures, setAvailableFeatures] = useState<FeatureWithId[]>([]);
   const [openEditForFeatureId, setOpenEditForFeatureId] = useState<string | undefined>(undefined);
+  const [availableMonsters, setAvailableMonsters] = useState<Array<{id: string; monster: Monster}>>([]);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   // Scope-conflict dialog state
   const [scopeDialog, setScopeDialog] = useState<{
@@ -129,6 +134,25 @@ export default function EditMonsterPage() {
       .then(data => setAvailableFeatures(data.features || []))
       .catch(err => console.error('Failed to load features:', err));
   }, []);
+
+  // Load available monsters for Fill from Monster
+  useEffect(() => {
+    fetch('/api/monsters')
+      .then(res => res.json())
+      .then(data => setAvailableMonsters(data.monsters || []))
+      .catch(err => console.error('Failed to load monsters:', err));
+  }, []);
+
+  const handleImportMonster = (importedMonsterId: string) => {
+    const found = availableMonsters.find(m => m.id === importedMonsterId);
+    if (!found) return;
+    const monsterCopy = { ...found.monster } as Partial<Monster> & { id?: string };
+    delete monsterCopy.id;
+    reset(monsterCopy as Monster);
+    setFeatures(resolveImportedFeatures(found.monster, availableFeatures));
+    setIsImportDialogOpen(false);
+    toast.success(`Filled from ${found.monster.Name}`);
+  };
 
   // ---- Feature callbacks ----
   const handleAddFeature = async (category: FeatureCategory, feature: MonsterFeature, existingFeatureId?: string) => {
@@ -369,10 +393,56 @@ export default function EditMonsterPage() {
 
         <Card className="bg-card border-border">
           <CardHeader>
-            <div className="flex gap-2">
-              <Link href="/monsters">
-                <Button variant="outline">Back to Monsters</Button>
-              </Link>
+            <div className="flex gap-2 flex-wrap">
+              <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button type="button" variant="outline">Fill from Monster</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Fill from Monster</DialogTitle>
+                    <DialogDescription>Select a monster to copy its data into this form. This will overwrite current form values.</DialogDescription>
+                  </DialogHeader>
+                  <MonsterSearch
+                    availableMonsters={availableMonsters}
+                    onSelectMonster={handleImportMonster}
+                  />
+                </DialogContent>
+              </Dialog>
+
+              <label htmlFor="edit-monster-upload-json" className="sr-only">Fill from JSON file</label>
+              <input
+                id="edit-monster-upload-json"
+                type="file"
+                accept="application/json"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (evt) => {
+                    try {
+                      const json = JSON.parse(evt.target?.result as string) as Monster;
+                      delete (json as any).id;
+                      reset(json);
+                      setFeatures(resolveImportedFeatures(json, availableFeatures));
+                      toast.success('Filled from JSON file');
+                    } catch {
+                      toast.error('Invalid JSON file');
+                    }
+                  };
+                  reader.readAsText(file);
+                  e.target.value = '';
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => document.getElementById('edit-monster-upload-json')?.click()}
+              >
+                Fill from JSON
+              </Button>
+
               <Button
                 type="button"
                 variant="outline"
@@ -386,7 +456,7 @@ export default function EditMonsterPage() {
                   dlAnchor.remove();
                 }}
               >
-                Download Monster
+                Download JSON
               </Button>
             </div>
           </CardHeader>
